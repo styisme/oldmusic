@@ -52,7 +52,7 @@ public class SettingsActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("UI 设置");
         title.setTextSize(22);
-        title.setTextColor(isDark ? 0xFFFBC02D : 0xFF1976D2); // 高对比度
+        title.setTextColor(isDark ? 0xFFFBC02D : 0xFF1976D2);
         title.getPaint().setFakeBoldText(true);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, dp(24));
@@ -93,7 +93,19 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemColor);
 
-        // 3. 侧滑返回
+        // 3. 强制圆屏适配（补回来的开关）
+        boolean isForceRound = sp.getInt("screen_shape", UikitConfig.SHAPE_AUTO) == UikitConfig.SHAPE_ROUND;
+        UikitListItem itemRound = new UikitListItem(this, "强制圆屏模式", "强制启用圆屏的边距与布局");
+        itemRound.setSwitch(isForceRound, new android.widget.CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(android.widget.CompoundButton buttonView, boolean isChecked) {
+                sp.edit().putInt("screen_shape", isChecked ? UikitConfig.SHAPE_ROUND : UikitConfig.SHAPE_AUTO).commit();
+                recreate();
+            }
+        });
+        addItemWithMargin(root, itemRound);
+
+        // 4. 侧滑返回
         boolean swipeBack = sp.getBoolean("swipe_back", true);
         UikitListItem itemSwipe = new UikitListItem(this, "侧滑返回", "通过手势快速退出当前页面");
         itemSwipe.setSwitch(swipeBack, new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -104,7 +116,7 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemSwipe);
 
-        // 4. 低性能模式
+        // 5. 低性能模式
         UikitListItem itemPerf = new UikitListItem(this, "低性能模式", "关闭 3D 滚轮与滑动动画");
         itemPerf.setSwitch(UikitConfig.isLowPerf(this), new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -117,15 +129,13 @@ public class SettingsActivity extends Activity {
     }
 
     private void addItemWithMargin(LinearLayout root, View view) {
-        // 同样采用包裹方式，解决粘连
-        android.widget.FrameLayout wrapper = new android.widget.FrameLayout(this);
-        LinearLayout.LayoutParams wrapperLp = new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        wrapperLp.bottomMargin = dp(12);
-        wrapper.setLayoutParams(wrapperLp);
-        wrapper.addView(view, new android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
-        root.addView(wrapper);
+        lp.leftMargin = dp(8);
+        lp.rightMargin = dp(8);
+        lp.bottomMargin = dp(12);
+        view.setLayoutParams(lp);
+        root.addView(view);
     }
 
     private int dp(int v) {

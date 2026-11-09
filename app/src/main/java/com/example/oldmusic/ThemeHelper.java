@@ -25,7 +25,8 @@ public class ThemeHelper {
         // 3. 强调色（默认浅黄）
         UikitConfig.setCustomAccentColor(context, 0xFFFFD54F);
 
-        // 4. 强制圆屏适配（防止卡片切边）
-        UikitConfig.setScreenShape(context, UikitConfig.SHAPE_ROUND);
+        // 4. 屏幕形状适配（默认 SHAPE_AUTO，由系统自动判断）
+        int shape = sp.getInt("screen_shape", UikitConfig.SHAPE_AUTO);
+        UikitConfig.setScreenShape(context, shape);
     }
 }

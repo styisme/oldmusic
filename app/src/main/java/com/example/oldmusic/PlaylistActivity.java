@@ -74,7 +74,6 @@ public class PlaylistActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("播放列表");
         title.setTextSize(22);
-        // 修复颜色对比度：深色模式用亮黄，浅色模式用深蓝
         title.setTextColor(isDark ? 0xFFFBC02D : 0xFF1976D2);
         title.getPaint().setFakeBoldText(true);
         title.setGravity(Gravity.CENTER);
@@ -112,26 +111,24 @@ public class PlaylistActivity extends Activity {
             String artist = song.artist;
             if (artist == null || artist.equals("<unknown>") || artist.trim().isEmpty()) artist = "未知歌手";
 
-            // 截断超长文本，防止撑破卡片
             if (title.length() > 14) title = title.substring(0, 14) + "...";
             if (artist.length() > 14) artist = artist.substring(0, 14) + "...";
 
+            // 彻底移除 FrameLayout 包裹，直接把 UikitListItem 加到父容器里
             UikitListItem item = new UikitListItem(this, title, artist);
             if (i == currentIndex) {
                 item.setArrow(); 
             }
             
-            // 修复粘连：给 LayoutParams 强制设置 bottomMargin 并且用 FrameLayout 包裹
-            FrameLayout wrapper = new FrameLayout(this);
-            LinearLayout.LayoutParams wrapperLp = new LinearLayout.LayoutParams(
+            // 增加左、右、下边距，让胶囊卡片完美独立，呈现单块药丸状
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            wrapperLp.bottomMargin = dp(12); 
-            wrapper.setLayoutParams(wrapperLp);
-            
-            wrapper.addView(item, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+            lp.leftMargin = dp(8);
+            lp.rightMargin = dp(8);
+            lp.bottomMargin = dp(12); 
+            item.setLayoutParams(lp);
 
-            wrapper.setOnClickListener(new View.OnClickListener() {
+            item.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (service != null) {
@@ -140,7 +137,7 @@ public class PlaylistActivity extends Activity {
                     }
                 }
             });
-            listContainer.addView(wrapper);
+            listContainer.addView(item);
         }
     }
 
