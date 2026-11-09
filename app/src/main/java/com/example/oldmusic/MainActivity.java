@@ -219,6 +219,25 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 监听颜色变化：如果设置页更改了颜色，返回主界面时自动重建刷新
+        int currentColor = UikitColor.getPrimaryColor(this);
+        if (currentColor != UikitConfig.prefs(this).getInt("last_applied_color", 0)) {
+            UikitConfig.prefs(this).edit().putInt("last_applied_color", currentColor).commit();
+            recreate();
+        }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        if (UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true)) {
+            if (UikitUi.handleSwipeBack(this, ev)) return true;
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
     private int dp(int v) {
         return (int) (v * getResources().getDisplayMetrics().density);
     }

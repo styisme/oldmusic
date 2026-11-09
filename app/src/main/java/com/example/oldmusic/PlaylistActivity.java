@@ -126,6 +126,14 @@ public class PlaylistActivity extends Activity {
         }
     }
 
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        if (UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true)) {
+            if (UikitUi.handleSwipeBack(this, ev)) return true;
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
     private int dp(int v) {
         return (int) (v * getResources().getDisplayMetrics().density);
     }
