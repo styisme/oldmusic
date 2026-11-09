@@ -118,23 +118,32 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
         UikitButton prevBtn = new UikitButton(this);
         prevBtn.setText("⏮");
-        prevBtn.setOnClickListener(v -> {
-            if (bound && service != null) service.prev();
-            WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+        prevBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (bound && service != null) service.prev();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+            }
         });
 
         playBtn = new UikitButton(this);
         playBtn.setText("▶");
-        playBtn.setOnClickListener(v -> {
-            if (bound && service != null) service.toggle();
-            WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+        playBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (bound && service != null) service.toggle();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+            }
         });
 
         UikitButton nextBtn = new UikitButton(this);
         nextBtn.setText("⏭");
-        nextBtn.setOnClickListener(v -> {
-            if (bound && service != null) service.next();
-            WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+        nextBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (bound && service != null) service.next();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+            }
         });
 
         // 控制间距
@@ -155,10 +164,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         // 6. 播放模式 (胶囊按钮)
         modeBtn = new UikitButton(this);
         modeBtn.setText("顺序播放");
-        modeBtn.setOnClickListener(v -> {
-            if (bound && service != null) {
-                service.setMode((service.getMode() + 1) % 3);
-                updateModeButton();
+        modeBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (bound && service != null) {
+                    service.setMode((service.getMode() + 1) % 3);
+                    updateModeButton();
+                }
             }
         });
         LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(
@@ -321,8 +333,11 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             lp.bottomMargin = UikitScreenUtils.dp2px(this, 12);
             item.setLayoutParams(lp);
 
-            item.setOnClickListener(v -> {
-                if (bound && service != null) service.playIndex(index);
+            item.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (bound && service != null) service.playIndex(index);
+                }
             });
             listContainer.addView(item);
         }
