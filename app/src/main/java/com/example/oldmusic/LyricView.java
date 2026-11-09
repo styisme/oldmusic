@@ -2,7 +2,6 @@ package com.example.oldmusic;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
@@ -16,29 +15,28 @@ public class LyricView extends View {
     private final Paint normalPaint;
     private final Paint highlightPaint;
     private final Paint emptyPaint;
-    private final int lineHeight = 56;
+    private final int lineHeight;
 
     public LyricView(Context context) {
         super(context);
-        // 深色模式下的配色：未播放行灰色，当前行亮黄色（类似官方演示）
-        normalPaint = newPaint(0x88FFFFFF, 16f);
-        highlightPaint = newPaint(0xFFFFD54F, 20f); // 官方常见的金黄色强调
-        emptyPaint = newPaint(0x44FFFFFF, 16f);
+        lineHeight = (int) (36 * context.getResources().getDisplayMetrics().density);
+        normalPaint = newPaint(0x88FFFFFF, 14f); // 未播放行半透明白
+        highlightPaint = newPaint(0xFFFFD54F, 18f); // 当前行金黄色
+        emptyPaint = newPaint(0x44FFFFFF, 14f);
     }
 
     public LyricView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        normalPaint = newPaint(0x88FFFFFF, 16f);
-        highlightPaint = newPaint(0xFFFFD54F, 20f);
-        emptyPaint = newPaint(0x44FFFFFF, 16f);
+        lineHeight = (int) (36 * context.getResources().getDisplayMetrics().density);
+        normalPaint = newPaint(0x88FFFFFF, 14f);
+        highlightPaint = newPaint(0xFFFFD54F, 18f);
+        emptyPaint = newPaint(0x44FFFFFF, 14f);
     }
 
     private Paint newPaint(int color, float sizeSp) {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setColor(color);
-        // 将 sp 转换为 px
-        float density = getResources().getDisplayMetrics().scaledDensity;
-        p.setTextSize(sizeSp * density);
+        p.setTextSize(sizeSp * getResources().getDisplayMetrics().scaledDensity);
         p.setTextAlign(Paint.Align.CENTER);
         return p;
     }

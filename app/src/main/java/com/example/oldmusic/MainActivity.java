@@ -7,7 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.graphics.Typeface;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,9 +16,7 @@ import android.provider.MediaStore;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -55,7 +53,10 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 强制应用库的深色主题
+        // 核心：强制配置主题色为官方演示图的“赛博黄”
+        UikitConfig.setCustomPrimaryColor(this, 0xFFFBC02D);
+        UikitConfig.setCustomAccentColor(this, 0xFFFFD54F);
+        
         UikitTheme.applyTheme(this);
         UikitUi.applyEntryAnimation(this);
 
@@ -66,58 +67,64 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void buildModernUi() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(0xFF121212); // 官方演示的极黑背景
+        // 官方 Demo 的背景色：深空灰
+        scroll.setBackgroundColor(0xFF121212); 
         
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(32, 64, 32, 32);
+        // 增加充足的边距，避免拥挤
+        root.setPadding(dp(24), dp(48), dp(24), dp(32)); 
         scroll.addView(root);
         setContentView(scroll);
 
         UikitUi.applyRoundPadding(this, root);
+        UikitUi.setupWheelScroll(scroll, root);
 
-        // 1. 歌曲标题 (大字号，白色，居中)
+        // 1. 歌曲信息
         titleView = new TextView(this);
         titleView.setText("未播放");
         titleView.setTextSize(24);
-        titleView.setTypeface(null, Typeface.BOLD);
+        titleView.getPaint().setFakeBoldText(true);
         titleView.setTextColor(0xFFFFFFFF);
         titleView.setGravity(Gravity.CENTER);
         
-        // 2. 歌手名 (小字号，灰色，居中)
         artistView = new TextView(this);
         artistView.setText("未知歌手");
         artistView.setTextSize(14);
         artistView.setTextColor(0xFFAAAAAA);
         artistView.setGravity(Gravity.CENTER);
-        artistView.setPadding(0, 8, 0, 32);
+        artistView.setPadding(0, dp(8), 0, dp(24));
 
         root.addView(titleView);
         root.addView(artistView);
 
-        // 3. 歌词 View
+        // 2. 歌词视图（自带 3D 滚轮效果）
         lyricView = new LyricView(this);
         LinearLayout.LayoutParams lyricLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, UikitScreenUtils.dp2px(this, 160));
-        lyricLp.bottomMargin = UikitScreenUtils.dp2px(this, 32);
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(160));
+        lyricLp.bottomMargin = dp(24);
         root.addView(lyricView, lyricLp);
 
-        // 4. 进度条
+        // 3. 进度条（严格限制高度，否则自绘会变形）
         progressBar = new UikitProgressBar(this);
         progressBar.setProgress(0f);
         LinearLayout.LayoutParams pbLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, UikitScreenUtils.dp2px(this, 8));
-        pbLp.bottomMargin = UikitScreenUtils.dp2px(this, 32);
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(8));
+        pbLp.bottomMargin = dp(32);
         root.addView(progressBar, pbLp);
 
-        // 5. 控制按钮行（去掉生硬的尺寸限制，让它自适应）
+        // 4. 控制按钮区（利用权重均分，强制撑开药丸形状）
         LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
         btnRow.setGravity(Gravity.CENTER);
 
         UikitButton prevBtn = new UikitButton(this);
         prevBtn.setText("⏮");
+        prevBtn.setTextSize(20);
+        LinearLayout.LayoutParams prevLp = new LinearLayout.LayoutParams(0, dp(64), 1f);
+        prevLp.rightMargin = dp(12);
+        prevBtn.setLayoutParams(prevLp);
         prevBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -128,6 +135,11 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
         playBtn = new UikitButton(this);
         playBtn.setText("▶");
+        playBtn.setTextSize(24);
+        LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(0, dp(64), 1.5f); // 播放键稍大
+        playLp.leftMargin = dp(12);
+        playLp.rightMargin = dp(12);
+        playBtn.setLayoutParams(playLp);
         playBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -138,6 +150,10 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
         UikitButton nextBtn = new UikitButton(this);
         nextBtn.setText("⏭");
+        nextBtn.setTextSize(20);
+        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(0, dp(64), 1f);
+        nextLp.leftMargin = dp(12);
+        nextBtn.setLayoutParams(nextLp);
         nextBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -146,24 +162,23 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             }
         });
 
-        // 控制间距
-        LinearLayout.LayoutParams pLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        pLp.leftMargin = UikitScreenUtils.dp2px(this, 16);
-        pLp.rightMargin = UikitScreenUtils.dp2px(this, 16);
-
         btnRow.addView(prevBtn);
-        btnRow.addView(playBtn, pLp);
+        btnRow.addView(playBtn);
         btnRow.addView(nextBtn);
 
         LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rowLp.bottomMargin = UikitScreenUtils.dp2px(this, 32);
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowLp.bottomMargin = dp(24);
         root.addView(btnRow, rowLp);
 
-        // 6. 播放模式 (胶囊按钮)
+        // 5. 播放模式（长条胶囊）
         modeBtn = new UikitButton(this);
         modeBtn.setText("顺序播放");
+        modeBtn.setTextSize(16);
+        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(56));
+        modeLp.bottomMargin = dp(32);
+        root.addView(modeBtn, modeLp);
         modeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -173,23 +188,24 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 }
             }
         });
-        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(
-                UikitScreenUtils.dp2px(this, 200), LinearLayout.LayoutParams.WRAP_CONTENT);
-        modeLp.bottomMargin = UikitScreenUtils.dp2px(this, 32);
-        root.addView(modeBtn, modeLp);
 
-        // 7. 列表标题
+        // 6. 播放列表标题
         TextView listTitle = new TextView(this);
         listTitle.setText("当前播放列表");
-        listTitle.setTextColor(0xFFFFD54F);
+        listTitle.setTextColor(0xFFFBC02D); // 金黄
         listTitle.setTextSize(14);
-        listTitle.setPadding(0, 16, 0, 16);
+        listTitle.getPaint().setFakeBoldText(true);
+        listTitle.setPadding(0, dp(16), 0, dp(16));
         root.addView(listTitle);
 
-        // 8. 播放列表容器
+        // 7. 播放列表容器
         listContainer = new LinearLayout(this);
         listContainer.setOrientation(LinearLayout.VERTICAL);
         root.addView(listContainer);
+    }
+
+    private int dp(int v) {
+        return (int) (v * getResources().getDisplayMetrics().density);
     }
 
     private void startAndBindService() {
@@ -233,8 +249,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 int pos = service.getPosition();
                 int dur = service.getDuration();
                 if (dur > 0) {
-                    float percent = (float) pos / dur;
-                    progressBar.setProgress(percent);
+                    progressBar.setProgress((float) pos / dur);
                 } else {
                     progressBar.setProgress(0f);
                 }
@@ -324,13 +339,12 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 artist = "未知歌手";
             }
 
-            // 使用正确的构造方法：new UikitListItem(Context, Title, Subtitle)
+            // 使用官方的列表项控件，自带深灰色圆角卡片背景
             UikitListItem item = new UikitListItem(this, title, artist);
             
-            // 增加一点底部间距
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = UikitScreenUtils.dp2px(this, 12);
+            lp.bottomMargin = dp(12); // 卡片间距
             item.setLayoutParams(lp);
 
             item.setOnClickListener(new View.OnClickListener() {
@@ -353,13 +367,9 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         if (song == null) return;
         
         String title = song.title;
-        if (title == null || title.equals("<unknown>") || title.trim().isEmpty()) {
-            title = "未知歌曲";
-        }
+        if (title == null || title.equals("<unknown>") || title.trim().isEmpty()) title = "未知歌曲";
         String artist = song.artist;
-        if (artist == null || artist.equals("<unknown>") || artist.trim().isEmpty()) {
-            artist = "未知歌手";
-        }
+        if (artist == null || artist.equals("<unknown>") || artist.trim().isEmpty()) artist = "未知歌手";
 
         titleView.setText(title);
         artistView.setText(artist);
