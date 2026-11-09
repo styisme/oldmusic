@@ -29,5 +29,5 @@ dependencies {
     // wear-uikit: https://github.com/styisme/wear-uikit
     // 如果该 JitPack 坐标不可用，可先注释本行：
     // UikitBridge 通过反射调用，缺少依赖不影响其余功能编译。
-    // implementation 'com.github.styisme:wear-uikit:v1.2.1'  // 反射桥接，无需编译时依赖
+    implementation 'com.github.styisme:wear-uikit:v1.2.1'
 }

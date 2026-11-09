@@ -7,20 +7,24 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.MediaStore;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.SeekBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import org.uikit.*; // 正确包名
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,22 +36,156 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private PlaybackService service;
     private boolean bound = false;
 
-    private LyricView lyricView;
-    private ListView listView;
+    // UI 组件
     private TextView titleView;
     private TextView artistView;
-    private SeekBar progressBar;
-    private Button playBtn;
-    private Button prevBtn;
-    private Button nextBtn;
-    private Button modeBtn;
+    private LyricView lyricView;
+    private UikitProgressBar progressBar;
+    private UikitButton playBtn;
+    private UikitButton modeBtn;
+    private LinearLayout listContainer;
 
-    private ArrayAdapter<Song> adapter;
-    private final List<Song> songs = new ArrayList<Song>();
     private final Handler handler = new Handler();
-
     private List<LrcParser.Line> lyrics = new ArrayList<LrcParser.Line>();
-    private boolean userSeeking = false;
+    private List<Song> songs = new ArrayList<Song>();
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(UikitUi.wrapScale(newBase));
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        UikitTheme.applyTheme(this);
+        UikitUi.applyEntryAnimation(this);
+
+        buildUi();
+        startAndBindService();
+        handler.post(progressTask);
+    }
+
+    private void buildUi() {
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(32, 32, 32, 32);
+        scroll.addView(root);
+        setContentView(scroll);
+
+        UikitUi.applyRoundPadding(this, root);
+        UikitUi.setupWheelScroll(scroll, root);
+
+        boolean isDark = UikitTheme.isDarkMode(this);
+        root.setBackgroundColor(isDark ? 0xFF000000 : 0xFFF4F6F8);
+
+        // 1. 歌曲信息
+        titleView = new TextView(this);
+        titleView.setText("未播放");
+        titleView.setTextSize(22);
+        titleView.setTypeface(null, Typeface.BOLD);
+        titleView.setTextColor(UikitColor.getAccentColor(this, isDark));
+        titleView.setGravity(Gravity.CENTER);
+        
+        artistView = new TextView(this);
+        artistView.setText("");
+        artistView.setTextSize(14);
+        artistView.setTextColor(isDark ? 0xFFAAAAAA : 0xFF666666);
+        artistView.setGravity(Gravity.CENTER);
+        artistView.setPadding(0, 8, 0, 24);
+
+        root.addView(titleView);
+        root.addView(artistView);
+
+        // 2. 歌词视图 (利用自定义 View)
+        lyricView = new LyricView(this);
+        LinearLayout.LayoutParams lyricLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, UikitScreenUtils.dp2px(this, 150));
+        lyricLp.bottomMargin = UikitScreenUtils.dp2px(this, 16);
+        root.addView(lyricView, lyricLp);
+
+        // 3. 进度条 (UikitProgressBar 只能展示，不能拖动)
+        progressBar = new UikitProgressBar(this);
+        progressBar.setProgress(0f);
+        LinearLayout.LayoutParams pbLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, UikitScreenUtils.dp2px(this, 8));
+        pbLp.bottomMargin = UikitScreenUtils.dp2px(this, 24);
+        root.addView(progressBar, pbLp);
+
+        // 4. 播放控制按钮
+        LinearLayout btnRow = new LinearLayout(this);
+        btnRow.setOrientation(LinearLayout.HORIZONTAL);
+        btnRow.setGravity(Gravity.CENTER);
+
+        UikitButton prevBtn = new UikitButton(this);
+        prevBtn.setText("⏮");
+        prevBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (bound && service != null) service.prev();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+            }
+        });
+        btnRow.addView(prevBtn, new LinearLayout.LayoutParams(
+                UikitScreenUtils.dp2px(this, 60), UikitScreenUtils.dp2px(this, 60)));
+
+        playBtn = new UikitButton(this);
+        playBtn.setText("▶");
+        playBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (bound && service != null) service.toggle();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_MEDIUM);
+            }
+        });
+        LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(
+                UikitScreenUtils.dp2px(this, 80), UikitScreenUtils.dp2px(this, 80));
+        playLp.leftMargin = UikitScreenUtils.dp2px(this, 16);
+        playLp.rightMargin = UikitScreenUtils.dp2px(this, 16);
+        btnRow.addView(playBtn, playLp);
+
+        UikitButton nextBtn = new UikitButton(this);
+        nextBtn.setText("⏭");
+        nextBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (bound && service != null) service.next();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
+            }
+        });
+        btnRow.addView(nextBtn, new LinearLayout.LayoutParams(
+                UikitScreenUtils.dp2px(this, 60), UikitScreenUtils.dp2px(this, 60)));
+
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowLp.bottomMargin = UikitScreenUtils.dp2px(this, 24);
+        root.addView(btnRow, rowLp);
+
+        // 5. 播放模式
+        modeBtn = new UikitButton(this);
+        modeBtn.setText("顺序播放");
+        modeBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (bound && service != null) {
+                    service.setMode((service.getMode() + 1) % 3);
+                    updateModeButton();
+                }
+            }
+        });
+        root.addView(modeBtn);
+
+        // 6. 播放列表容器
+        listContainer = new LinearLayout(this);
+        listContainer.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams listLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        listLp.topMargin = UikitScreenUtils.dp2px(this, 16);
+        root.addView(listContainer, listLp);
+    }
+
+    private void startAndBindService() {
+        Intent intent = new Intent(this, PlaybackService.class);
+        startService(intent);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
+    }
 
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
@@ -56,18 +194,14 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             service.setListener(MainActivity.this);
             bound = true;
 
-            songs.clear();
-            songs.addAll(service.getPlaylist());
-            adapter.notifyDataSetChanged();
-
+            songs = service.getPlaylist();
             if (songs.isEmpty()) {
                 loadSongs();
                 service.setPlaylist(new ArrayList<Song>(songs));
-                if (!songs.isEmpty()) {
-                    service.playIndex(0);
-                }
+                if (!songs.isEmpty()) service.playIndex(0);
             } else {
                 onSongChanged(service.getCurrentSong());
+                rebuildPlaylist();
             }
 
             updateModeButton();
@@ -81,124 +215,17 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         }
     };
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        UikitBridge.init(this);
-        setContentView(R.layout.activity_main);
-        initViews();
-        startAndBindService();
-        handler.post(progressTask);
-    }
-
-    private void initViews() {
-        titleView = (TextView) findViewById(R.id.song_title);
-        artistView = (TextView) findViewById(R.id.song_artist);
-        lyricView = (LyricView) findViewById(R.id.lyric_view);
-        progressBar = (SeekBar) findViewById(R.id.progress);
-        playBtn = (Button) findViewById(R.id.btn_play);
-        prevBtn = (Button) findViewById(R.id.btn_prev);
-        nextBtn = (Button) findViewById(R.id.btn_next);
-        modeBtn = (Button) findViewById(R.id.btn_mode);
-        listView = (ListView) findViewById(R.id.song_list);
-
-        adapter = new ArrayAdapter<Song>(this, 0, songs) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View v = convertView;
-                if (v == null) {
-                    v = getLayoutInflater().inflate(R.layout.item_song, parent, false);
-                }
-                Song s = getItem(position);
-                TextView title = (TextView) v.findViewById(R.id.item_title);
-                TextView artist = (TextView) v.findViewById(R.id.item_artist);
-                title.setText(s.title);
-                artist.setText(s.artist);
-                return v;
-            }
-        };
-        listView.setAdapter(adapter);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (bound && service != null) {
-                    service.playIndex(position);
-                }
-            }
-        });
-
-        playBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (bound && service != null) {
-                    service.toggle();
-                }
-            }
-        });
-        prevBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (bound && service != null) {
-                    service.prev();
-                }
-            }
-        });
-        nextBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (bound && service != null) {
-                    service.next();
-                }
-            }
-        });
-        modeBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (bound && service != null) {
-                    service.setMode((service.getMode() + 1) % 3);
-                    updateModeButton();
-                }
-            }
-        });
-
-        progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && bound && service != null) {
-                    service.seekTo(progress);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                userSeeking = true;
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                userSeeking = false;
-            }
-        });
-    }
-
-    private void startAndBindService() {
-        Intent intent = new Intent(this, PlaybackService.class);
-        startService(intent);
-        bindService(intent, connection, Context.BIND_AUTO_CREATE);
-    }
-
     private final Runnable progressTask = new Runnable() {
         @Override
         public void run() {
-            if (bound && service != null && !userSeeking) {
+            if (bound && service != null) {
                 int pos = service.getPosition();
                 int dur = service.getDuration();
                 if (dur > 0) {
-                    progressBar.setMax(dur);
-                    progressBar.setProgress(pos);
+                    float percent = (float) pos / dur;
+                    progressBar.setProgress(percent);
                 } else {
-                    progressBar.setMax(0);
-                    progressBar.setProgress(0);
+                    progressBar.setProgress(0f);
                 }
                 updateLyric(pos);
             }
@@ -206,25 +233,11 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         }
     };
 
-    private void updateLyric(int position) {
-        if (lyrics == null || lyrics.isEmpty()) {
-            return;
-        }
-        int idx = LrcParser.findIndex(lyrics, position);
-        if (idx >= 0) {
-            lyricView.setCurrentIndex(idx);
-        }
-    }
-
     private void loadSongs() {
-        if (Build.VERSION.SDK_INT >= 23
-                && checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                    new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, REQ_PERM);
+        if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, REQ_PERM);
             return;
         }
-
         songs.clear();
         Cursor cursor = null;
         try {
@@ -243,25 +256,14 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                     MediaStore.Audio.Media.TITLE + " ASC");
             if (cursor != null) {
                 while (cursor.moveToNext()) {
-                    songs.add(new Song(
-                            cursor.getLong(0),
-                            cursor.getString(1),
-                            cursor.getString(2),
-                            cursor.getString(3),
-                            cursor.getLong(4)));
+                    songs.add(new Song(cursor.getLong(0), cursor.getString(1), cursor.getString(2), cursor.getString(3), cursor.getLong(4)));
                 }
             }
         } catch (Exception e) {
             Toast.makeText(this, "扫描本地音乐失败", Toast.LENGTH_SHORT).show();
         } finally {
-            if (cursor != null) {
-                try {
-                    cursor.close();
-                } catch (Exception ignored) {
-                }
-            }
+            if (cursor != null) cursor.close();
         }
-        adapter.notifyDataSetChanged();
     }
 
     @Override
@@ -271,40 +273,46 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             loadSongs();
             if (bound && service != null) {
                 service.setPlaylist(new ArrayList<Song>(songs));
-                if (!songs.isEmpty()) {
-                    service.playIndex(0);
-                }
+                if (!songs.isEmpty()) service.playIndex(0);
             }
         }
     }
 
-    private void updateLyricsFile(Song song) {
-        lyrics = new ArrayList<LrcParser.Line>();
-        if (song != null && song.path != null && song.path.length() > 0) {
-            String lrcPath = song.path;
-            int dot = lrcPath.lastIndexOf('.');
-            if (dot > 0) {
-                lrcPath = lrcPath.substring(0, dot) + ".lrc";
-            }
-            lyrics = LrcParser.parse(lrcPath);
-        }
-        lyricView.setLines(lyrics);
+    private void updateLyric(int position) {
+        if (lyrics == null || lyrics.isEmpty()) return;
+        int idx = LrcParser.findIndex(lyrics, position);
+        if (idx >= 0) lyricView.setCurrentIndex(idx);
     }
 
     private void updatePlayButton(boolean playing) {
-        playBtn.setText(playing ? "暂停" : "播放");
+        if (playBtn != null) playBtn.setText(playing ? "⏸" : "▶");
     }
 
     private void updateModeButton() {
-        if (bound && service != null) {
+        if (bound && service != null && modeBtn != null) {
             int m = service.getMode();
-            if (m == PlaybackService.MODE_REPEAT_ONE) {
-                modeBtn.setText("单曲");
-            } else if (m == PlaybackService.MODE_SHUFFLE) {
-                modeBtn.setText("随机");
-            } else {
-                modeBtn.setText("顺序");
-            }
+            if (m == PlaybackService.MODE_REPEAT_ONE) modeBtn.setText("单曲循环");
+            else if (m == PlaybackService.MODE_SHUFFLE) modeBtn.setText("随机播放");
+            else modeBtn.setText("顺序播放");
+        }
+    }
+
+    private void rebuildPlaylist() {
+        if (listContainer == null) return;
+        listContainer.removeAllViews();
+        for (int i = 0; i < songs.size(); i++) {
+            final int index = i;
+            Song song = songs.get(i);
+            
+            UikitListItem item = new UikitListItem(this);
+            item.setTitle(song.title);
+            item.setSubtitle(song.artist);
+            item.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    if (bound && service != null) service.playIndex(index);
+                }
+            });
+            listContainer.addView(item);
         }
     }
 
@@ -315,29 +323,25 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     @Override
     public void onSongChanged(Song song) {
-        if (song == null) {
-            return;
-        }
+        if (song == null) return;
         titleView.setText(song.title);
         artistView.setText(song.artist);
-        updateLyricsFile(song);
-        for (int i = 0; i < songs.size(); i++) {
-            if (songs.get(i).path != null && songs.get(i).path.equals(song.path)) {
-                listView.setItemChecked(i, true);
-                listView.setSelection(i);
-                break;
-            }
+        
+        lyrics = new ArrayList<LrcParser.Line>();
+        if (song.path != null && song.path.length() > 0) {
+            String lrcPath = song.path;
+            int dot = lrcPath.lastIndexOf('.');
+            if (dot > 0) lrcPath = lrcPath.substring(0, dot) + ".lrc";
+            lyrics = LrcParser.parse(lrcPath);
         }
+        lyricView.setLines(lyrics);
     }
 
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(progressTask);
         if (bound) {
-            try {
-                service.setListener(null);
-            } catch (Exception ignored) {
-            }
+            try { service.setListener(null); } catch (Exception ignored) {}
             unbindService(connection);
             bound = false;
         }
