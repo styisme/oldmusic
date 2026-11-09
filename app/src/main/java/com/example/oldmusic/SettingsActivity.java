@@ -9,13 +9,12 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import org.uikit.*;
 
 public class SettingsActivity extends Activity {
 
-    private LinearLayout root;
+    private SharedPreferences sp;
     private boolean isDark;
 
     @Override
@@ -26,27 +25,22 @@ public class SettingsActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
-        // 核心修复：先从我们自己的存储读取深色模式状态，默认开启深色
-        SharedPreferences sp = UikitConfig.prefs(this);
-        isDark = sp.getBoolean("is_dark_mode", true);
-        
-        // 强制覆盖库的内部主题，避免它去读系统浅色模式导致 UI 变白
-        UikitConfig.setThemeMode(this, isDark ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
-        UikitConfig.setScreenShape(this, UikitConfig.SHAPE_ROUND);
+        ThemeHelper.applyGlobalTheme(this);
         UikitTheme.applyTheme(this);
+
+        sp = ThemeHelper.getPrefs(this);
+        isDark = UikitTheme.isDarkMode(this);
 
         buildUI();
     }
 
     private void buildUI() {
         ScrollView scroll = new ScrollView(this);
-        // 动态背景色
         scroll.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
         scroll.setClipToPadding(false);
         scroll.setPadding(0, dp(32), 0, dp(32));
-        
-        root = new LinearLayout(this);
+
+        LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(24), dp(16), dp(24), dp(32));
         scroll.addView(root);
@@ -58,7 +52,7 @@ public class SettingsActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("UI 设置");
         title.setTextSize(22);
-        title.setTextColor(0xFFFBC02D); // 标题保持醒目黄
+        title.setTextColor(isDark ? 0xFFFBC02D : 0xFF1976D2); // 高对比度
         title.getPaint().setFakeBoldText(true);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, dp(24));
@@ -69,15 +63,13 @@ public class SettingsActivity extends Activity {
         itemTheme.setSwitch(isDark, new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(android.widget.CompoundButton buttonView, boolean isChecked) {
-                // 保存状态并同步给库
-                UikitConfig.prefs(SettingsActivity.this).edit().putBoolean("is_dark_mode", isChecked).commit();
-                UikitConfig.setThemeMode(SettingsActivity.this, isChecked ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
-                recreate(); // 重启页面使 UI 彻底刷新
+                sp.edit().putString("theme_mode", isChecked ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT).commit();
+                recreate();
             }
         });
         addItemWithMargin(root, itemTheme);
 
-        // 2. 主题颜色
+        // 2. 主题色
         UikitListItem itemColor = new UikitListItem(this, "主题颜色", "更改应用主色调");
         itemColor.setArrow();
         itemColor.setOnClickListener(new View.OnClickListener() {
@@ -93,7 +85,7 @@ public class SettingsActivity extends Activity {
                                 else if (position == 2) color = 0xFF1976D2;
                                 else if (position == 3) color = 0xFFD32F2F;
                                 
-                                UikitConfig.setCustomPrimaryColor(SettingsActivity.this, color);
+                                sp.edit().putInt("primary_color", color).commit();
                                 recreate(); 
                             }
                         }).show();
@@ -102,29 +94,17 @@ public class SettingsActivity extends Activity {
         addItemWithMargin(root, itemColor);
 
         // 3. 侧滑返回
-        boolean swipeBackEnabled = UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true);
+        boolean swipeBack = sp.getBoolean("swipe_back", true);
         UikitListItem itemSwipe = new UikitListItem(this, "侧滑返回", "通过手势快速退出当前页面");
-        itemSwipe.setSwitch(swipeBackEnabled, new android.widget.CompoundButton.OnCheckedChangeListener() {
+        itemSwipe.setSwitch(swipeBack, new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(android.widget.CompoundButton buttonView, boolean isChecked) {
-                UikitConfig.prefs(SettingsActivity.this).edit().putBoolean("uikit_swipe_back", isChecked).commit();
+                sp.edit().putBoolean("swipe_back", isChecked).commit();
             }
         });
         addItemWithMargin(root, itemSwipe);
 
-        // 4. 强制圆屏适配
-        boolean isForceRound = UikitConfig.getScreenShape(this) == UikitConfig.SHAPE_ROUND;
-        UikitListItem itemRound = new UikitListItem(this, "强制圆屏适配", "强制启用圆屏的边距与布局");
-        itemRound.setSwitch(isForceRound, new android.widget.CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(android.widget.CompoundButton buttonView, boolean isChecked) {
-                UikitConfig.setScreenShape(SettingsActivity.this, isChecked ? UikitConfig.SHAPE_ROUND : UikitConfig.SHAPE_AUTO);
-                recreate();
-            }
-        });
-        addItemWithMargin(root, itemRound);
-
-        // 5. 低性能模式
+        // 4. 低性能模式
         UikitListItem itemPerf = new UikitListItem(this, "低性能模式", "关闭 3D 滚轮与滑动动画");
         itemPerf.setSwitch(UikitConfig.isLowPerf(this), new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -137,11 +117,15 @@ public class SettingsActivity extends Activity {
     }
 
     private void addItemWithMargin(LinearLayout root, View view) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+        // 同样采用包裹方式，解决粘连
+        android.widget.FrameLayout wrapper = new android.widget.FrameLayout(this);
+        LinearLayout.LayoutParams wrapperLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = dp(12);
-        view.setLayoutParams(lp);
-        root.addView(view);
+        wrapperLp.bottomMargin = dp(12);
+        wrapper.setLayoutParams(wrapperLp);
+        wrapper.addView(view, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
+        root.addView(wrapper);
     }
 
     private int dp(int v) {
@@ -150,7 +134,7 @@ public class SettingsActivity extends Activity {
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true)) {
+        if (sp.getBoolean("swipe_back", true)) {
             if (UikitUi.handleSwipeBack(this, ev)) return true;
         }
         return super.dispatchTouchEvent(ev);

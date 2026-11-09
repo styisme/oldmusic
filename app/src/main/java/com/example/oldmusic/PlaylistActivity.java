@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -17,7 +16,6 @@ import android.widget.TextView;
 
 import org.uikit.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PlaylistActivity extends Activity {
@@ -49,42 +47,35 @@ public class PlaylistActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 读取深色模式配置
-        boolean isDark = UikitConfig.prefs(this).getBoolean("is_dark_mode", true);
-        UikitConfig.setThemeMode(this, isDark ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
-        
-        // 关键修复：强制开启圆屏适配，防止卡片切边
-        UikitConfig.setScreenShape(this, UikitConfig.SHAPE_ROUND);
+        ThemeHelper.applyGlobalTheme(this);
         UikitTheme.applyTheme(this);
 
-        // 使用 FrameLayout 作为根，确保背景全黑
+        boolean isDark = UikitTheme.isDarkMode(this);
+
         FrameLayout rootFrame = new FrameLayout(this);
         rootFrame.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setClipToPadding(false);
         scroll.setVerticalScrollBarEnabled(false);
-        // 圆屏安全区：上下留白，方便滑到顶/底时依然居中
         scroll.setPadding(0, dp(32), 0, dp(32)); 
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        // 加大左右边距 (24dp)，防止圆屏边缘切掉卡片
         root.setPadding(dp(24), dp(16), dp(24), dp(32));
         scroll.addView(root);
 
         rootFrame.addView(scroll);
         setContentView(rootFrame);
 
-        // 库自带的圆屏判断和边距（会再次检查并叠加上去）
         UikitUi.applyRoundPadding(this, root);
-        // 3D 滚轮效果
         UikitUi.setupWheelScroll(scroll, root);
 
         TextView title = new TextView(this);
         title.setText("播放列表");
         title.setTextSize(22);
-        title.setTextColor(UikitColor.getPrimaryColor(this));
+        // 修复颜色对比度：深色模式用亮黄，浅色模式用深蓝
+        title.setTextColor(isDark ? 0xFFFBC02D : 0xFF1976D2);
         title.getPaint().setFakeBoldText(true);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, dp(24));
@@ -121,21 +112,26 @@ public class PlaylistActivity extends Activity {
             String artist = song.artist;
             if (artist == null || artist.equals("<unknown>") || artist.trim().isEmpty()) artist = "未知歌手";
 
-            // 对超长标题做截断处理，防止把卡片撑爆
-            if (title.length() > 15) title = title.substring(0, 15) + "...";
-            if (artist.length() > 15) artist = artist.substring(0, 15) + "...";
+            // 截断超长文本，防止撑破卡片
+            if (title.length() > 14) title = title.substring(0, 14) + "...";
+            if (artist.length() > 14) artist = artist.substring(0, 14) + "...";
 
             UikitListItem item = new UikitListItem(this, title, artist);
             if (i == currentIndex) {
                 item.setArrow(); 
             }
             
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            // 修复粘连：给 LayoutParams 强制设置 bottomMargin 并且用 FrameLayout 包裹
+            FrameLayout wrapper = new FrameLayout(this);
+            LinearLayout.LayoutParams wrapperLp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = dp(12);
-            item.setLayoutParams(lp);
+            wrapperLp.bottomMargin = dp(12); 
+            wrapper.setLayoutParams(wrapperLp);
+            
+            wrapper.addView(item, new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
 
-            item.setOnClickListener(new View.OnClickListener() {
+            wrapper.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (service != null) {
@@ -144,7 +140,7 @@ public class PlaylistActivity extends Activity {
                     }
                 }
             });
-            listContainer.addView(item);
+            listContainer.addView(wrapper);
         }
     }
 
@@ -154,7 +150,7 @@ public class PlaylistActivity extends Activity {
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true)) {
+        if (ThemeHelper.getPrefs(this).getBoolean("swipe_back", true)) {
             if (UikitUi.handleSwipeBack(this, ev)) return true;
         }
         return super.dispatchTouchEvent(ev);
