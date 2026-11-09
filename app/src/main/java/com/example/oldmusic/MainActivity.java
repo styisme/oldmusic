@@ -37,7 +37,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private UikitProgressBar progressBar;
     private UikitButton playBtn;
     private UikitButton modeBtn;
-    private LinearLayout listContainer;
 
     private final Handler handler = new Handler();
     private List<LrcParser.Line> lyrics = new ArrayList<LrcParser.Line>();
@@ -51,9 +50,9 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 赛博黄主题
+        // 强制深色模式，解决列表泛白问题
+        UikitConfig.setThemeMode(this, UikitConfig.THEME_DARK);
         UikitConfig.setCustomPrimaryColor(this, 0xFFFBC02D);
-        UikitConfig.setCustomAccentColor(this, 0xFFFFD54F);
         
         UikitTheme.applyTheme(this);
         UikitUi.applyEntryAnimation(this);
@@ -65,7 +64,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void buildModernUi() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(0xFF121212); // 极黑背景
+        scroll.setBackgroundColor(0xFF121212);
         
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -110,7 +109,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         pbLp.bottomMargin = dp(32);
         root.addView(progressBar, pbLp);
 
-        // 4. 控制按钮区（使用文字代替 Emoji，彻底避免色块）
+        // 4. 控制按钮区
         LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
         btnRow.setGravity(Gravity.CENTER);
@@ -167,13 +166,47 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         rowLp.bottomMargin = dp(24);
         root.addView(btnRow, rowLp);
 
-        // 5. 播放模式
+        // 5. 功能入口区（播放列表、UI 设置）
+        LinearLayout menuRow = new LinearLayout(this);
+        menuRow.setOrientation(LinearLayout.HORIZONTAL);
+        
+        UikitButton playlistBtn = new UikitButton(this);
+        playlistBtn.setText("播放列表");
+        playlistBtn.setTextSize(15);
+        LinearLayout.LayoutParams plLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
+        plLp.rightMargin = dp(8);
+        playlistBtn.setLayoutParams(plLp);
+        playlistBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, PlaylistActivity.class));
+            }
+        });
+
+        UikitButton settingsBtn = new UikitButton(this);
+        settingsBtn.setText("UI 设置");
+        settingsBtn.setTextSize(15);
+        LinearLayout.LayoutParams setLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
+        setLp.leftMargin = dp(8);
+        settingsBtn.setLayoutParams(setLp);
+        settingsBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+            }
+        });
+
+        menuRow.addView(playlistBtn);
+        menuRow.addView(settingsBtn);
+        root.addView(menuRow);
+
+        // 6. 播放模式
         modeBtn = new UikitButton(this);
         modeBtn.setText("顺序播放");
-        modeBtn.setTextSize(15);
+        modeBtn.setTextSize(14);
         LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(52));
-        modeLp.bottomMargin = dp(32);
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
+        modeLp.topMargin = dp(16);
         root.addView(modeBtn, modeLp);
         modeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -184,20 +217,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 }
             }
         });
-
-        // 6. 播放列表标题
-        TextView listTitle = new TextView(this);
-        listTitle.setText("当前播放列表");
-        listTitle.setTextColor(0xFFFBC02D);
-        listTitle.setTextSize(14);
-        listTitle.getPaint().setFakeBoldText(true);
-        listTitle.setPadding(0, dp(16), 0, dp(16));
-        root.addView(listTitle);
-
-        // 7. 播放列表容器
-        listContainer = new LinearLayout(this);
-        listContainer.setOrientation(LinearLayout.VERTICAL);
-        root.addView(listContainer);
     }
 
     private int dp(int v) {
@@ -219,12 +238,11 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
             songs = service.getPlaylist();
             if (songs.isEmpty()) {
-                loadSongs(); // 扫描完会触发 rebuildPlaylist
+                loadSongs();
                 service.setPlaylist(new ArrayList<Song>(songs));
                 if (!songs.isEmpty()) service.playIndex(0);
             } else {
                 onSongChanged(service.getCurrentSong());
-                rebuildPlaylist();
             }
 
             updateModeButton();
@@ -244,11 +262,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             if (bound && service != null) {
                 int pos = service.getPosition();
                 int dur = service.getDuration();
-                if (dur > 0) {
-                    progressBar.setProgress((float) pos / dur);
-                } else {
-                    progressBar.setProgress(0f);
-                }
+                if (dur > 0) progressBar.setProgress((float) pos / dur);
+                else progressBar.setProgress(0f);
                 updateLyric(pos);
             }
             handler.postDelayed(this, 300L);
@@ -264,17 +279,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         Cursor cursor = null;
         try {
             String[] projection = new String[]{
-                    MediaStore.Audio.Media._ID,
-                    MediaStore.Audio.Media.TITLE,
-                    MediaStore.Audio.Media.ARTIST,
-                    MediaStore.Audio.Media.DATA,
+                    MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE,
+                    MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.DATA,
                     MediaStore.Audio.Media.DURATION
             };
             cursor = getContentResolver().query(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                    projection,
-                    MediaStore.Audio.Media.IS_MUSIC + "!=0",
-                    null,
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,
+                    MediaStore.Audio.Media.IS_MUSIC + "!=0", null,
                     MediaStore.Audio.Media.TITLE + " ASC");
             if (cursor != null) {
                 while (cursor.moveToNext()) {
@@ -286,9 +297,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         } finally {
             if (cursor != null) cursor.close();
         }
-        
-        // 修复关键：扫描完后强制渲染列表
-        rebuildPlaylist();
     }
 
     @Override
@@ -322,48 +330,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         }
     }
 
-    private void rebuildPlaylist() {
-        if (listContainer == null) return;
-        listContainer.removeAllViews();
-        
-        if (songs.isEmpty()) {
-            // 播放列表为空时显示提示
-            TextView emptyTv = new TextView(this);
-            emptyTv.setText("未找到本地音乐文件");
-            emptyTv.setTextColor(0xFF888888);
-            emptyTv.setTextSize(14);
-            emptyTv.setPadding(0, dp(16), 0, dp(16));
-            emptyTv.setGravity(Gravity.CENTER);
-            listContainer.addView(emptyTv);
-            return;
-        }
-
-        for (int i = 0; i < songs.size(); i++) {
-            final int index = i;
-            Song song = songs.get(i);
-            
-            String title = song.title;
-            if (title == null || title.equals("<unknown>") || title.trim().isEmpty()) title = "未知歌曲";
-            String artist = song.artist;
-            if (artist == null || artist.equals("<unknown>") || artist.trim().isEmpty()) artist = "未知歌手";
-
-            UikitListItem item = new UikitListItem(this, title, artist);
-            
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = dp(12);
-            item.setLayoutParams(lp);
-
-            item.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (bound && service != null) service.playIndex(index);
-                }
-            });
-            listContainer.addView(item);
-        }
-    }
-
     @Override
     public void onPlayStateChanged(boolean playing) {
         updatePlayButton(playing);
@@ -372,7 +338,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     @Override
     public void onSongChanged(Song song) {
         if (song == null) return;
-        
         String title = song.title;
         if (title == null || title.equals("<unknown>") || title.trim().isEmpty()) title = "未知歌曲";
         String artist = song.artist;
