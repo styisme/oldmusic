@@ -50,8 +50,9 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 强制深色模式，解决列表泛白问题
-        UikitConfig.setThemeMode(this, UikitConfig.THEME_DARK);
+        // 核心修复：读取用户保存的深色模式状态
+        boolean isDark = UikitConfig.prefs(this).getBoolean("is_dark_mode", true);
+        UikitConfig.setThemeMode(this, isDark ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
         UikitConfig.setCustomPrimaryColor(this, 0xFFFBC02D);
         
         UikitTheme.applyTheme(this);
@@ -64,7 +65,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void buildModernUi() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(0xFF121212);
+        boolean isDark = UikitTheme.isDarkMode(this);
+        scroll.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
         
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -81,13 +83,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         titleView.setText("未播放");
         titleView.setTextSize(24);
         titleView.getPaint().setFakeBoldText(true);
-        titleView.setTextColor(0xFFFFFFFF);
+        titleView.setTextColor(UikitTheme.isDarkMode(this) ? 0xFFFFFFFF : 0xFF1C1B1F);
         titleView.setGravity(Gravity.CENTER);
         
         artistView = new TextView(this);
         artistView.setText("未知歌手");
         artistView.setTextSize(14);
-        artistView.setTextColor(0xFFAAAAAA);
+        artistView.setTextColor(UikitTheme.isDarkMode(this) ? 0xFFAAAAAA : 0xFF666666);
         artistView.setGravity(Gravity.CENTER);
         artistView.setPadding(0, dp(8), 0, dp(24));
 

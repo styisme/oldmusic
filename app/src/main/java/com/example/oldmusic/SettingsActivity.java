@@ -16,6 +16,7 @@ import org.uikit.*;
 public class SettingsActivity extends Activity {
 
     private LinearLayout root;
+    private boolean isDark;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -25,6 +26,13 @@ public class SettingsActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // 核心修复：先从我们自己的存储读取深色模式状态，默认开启深色
+        SharedPreferences sp = UikitConfig.prefs(this);
+        isDark = sp.getBoolean("is_dark_mode", true);
+        
+        // 强制覆盖库的内部主题，避免它去读系统浅色模式导致 UI 变白
+        UikitConfig.setThemeMode(this, isDark ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
         UikitTheme.applyTheme(this);
 
         buildUI();
@@ -32,7 +40,9 @@ public class SettingsActivity extends Activity {
 
     private void buildUI() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(0xFF121212);
+        // 动态背景色
+        scroll.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
+        
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(24), dp(32), dp(24), dp(32));
@@ -45,7 +55,7 @@ public class SettingsActivity extends Activity {
         TextView title = new TextView(this);
         title.setText("UI 设置");
         title.setTextSize(22);
-        title.setTextColor(0xFFFBC02D);
+        title.setTextColor(0xFFFBC02D); // 标题保持醒目黄
         title.getPaint().setFakeBoldText(true);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, dp(24));
@@ -53,11 +63,13 @@ public class SettingsActivity extends Activity {
 
         // 1. 深色模式
         UikitListItem itemTheme = new UikitListItem(this, "深色模式", "切换深色与浅色主题");
-        itemTheme.setSwitch(UikitTheme.isDarkMode(this), new android.widget.CompoundButton.OnCheckedChangeListener() {
+        itemTheme.setSwitch(isDark, new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(android.widget.CompoundButton buttonView, boolean isChecked) {
+                // 保存状态并同步给库
+                UikitConfig.prefs(SettingsActivity.this).edit().putBoolean("is_dark_mode", isChecked).commit();
                 UikitConfig.setThemeMode(SettingsActivity.this, isChecked ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
-                recreate();
+                recreate(); // 重启页面使 UI 彻底刷新
             }
         });
         addItemWithMargin(root, itemTheme);
@@ -79,17 +91,15 @@ public class SettingsActivity extends Activity {
                                 else if (position == 3) color = 0xFFD32F2F;
                                 
                                 UikitConfig.setCustomPrimaryColor(SettingsActivity.this, color);
-                                // 切换颜色后自动重建当前页面
-                                recreate();
+                                recreate(); 
                             }
                         }).show();
             }
         });
         addItemWithMargin(root, itemColor);
 
-        // 3. 侧滑返回（自定义配置）
-        SharedPreferences sp = UikitConfig.prefs(this);
-        boolean swipeBackEnabled = sp.getBoolean("uikit_swipe_back", true);
+        // 3. 侧滑返回
+        boolean swipeBackEnabled = UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true);
         UikitListItem itemSwipe = new UikitListItem(this, "侧滑返回", "通过手势快速退出当前页面");
         itemSwipe.setSwitch(swipeBackEnabled, new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -99,7 +109,7 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemSwipe);
 
-        // 4. 强制圆屏模式
+        // 4. 强制圆屏适配
         boolean isForceRound = UikitConfig.getScreenShape(this) == UikitConfig.SHAPE_ROUND;
         UikitListItem itemRound = new UikitListItem(this, "强制圆屏适配", "强制启用圆屏的边距与布局");
         itemRound.setSwitch(isForceRound, new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -135,7 +145,6 @@ public class SettingsActivity extends Activity {
         return (int) (v * getResources().getDisplayMetrics().density);
     }
 
-    // 支持侧滑返回（设置页自身也需要）
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         if (UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true)) {
