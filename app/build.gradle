@@ -1,0 +1,33 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
+
+    defaultConfig {
+        applicationId "com.example.oldmusic"
+        minSdkVersion 10
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+        encoding "UTF-8"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    // wear-uikit: https://github.com/styisme/wear-uikit
+    // 如果该 JitPack 坐标不可用，可先注释本行：
+    // UikitBridge 通过反射调用，缺少依赖不影响其余功能编译。
+    implementation 'com.github.styisme:wear-uikit:v1.2.1'
+}

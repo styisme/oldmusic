@@ -1,0 +1,71 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main, master ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. 先用 JDK 17 安装 Android SDK（sdkmanager 强制要求 JDK 17+）
+      - name: Set up JDK 17 (for sdkmanager)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-28 build-tools;28.0.3 platform-tools'
+
+      # 2. 安装 JDK 8 并显式切换 JAVA_HOME，供旧版 Gradle/AGP 使用
+      - name: Set up JDK 8 Zulu
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '8'
+          java-package: jdk
+
+      - name: Point JAVA_HOME to JDK 8
+        run: |
+          if [ -n "$JAVA_HOME_8_X64" ]; then
+            echo "JAVA_HOME=$JAVA_HOME_8_X64" >> $GITHUB_ENV
+            echo "$JAVA_HOME_8_X64/bin" >> $GITHUB_PATH
+          fi
+
+      # 3. 安装 Gradle 5.6.4（AGP 3.5.4 无法使用 Gradle 7/8）
+      - name: Setup Gradle 5.6.4
+        run: |
+          curl -fL --retry 3 --retry-delay 2 --connect-timeout 15 -o gradle-5.6.4-bin.zip https://mirrors.cloud.tencent.com/gradle/gradle-5.6.4-bin.zip
+          unzip -qo gradle-5.6.4-bin.zip
+          echo "$PWD/gradle-5.6.4/bin" >> $GITHUB_PATH
+
+      # 4. 仅构建 oldmusic 的 app 模块
+      - name: Build App
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Collect Artifacts
+        run: |
+          mkdir -p final_artifacts
+          find . -name "*.apk" -not -path "*/tmp/*" -exec cp {} final_artifacts/ \;
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: oldmusic-debug
+          path: final_artifacts/*
