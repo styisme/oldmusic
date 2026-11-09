@@ -134,7 +134,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         playBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (bound && service != null) service.toggle();
-                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_MEDIUM);
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
             }
         });
         LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(
@@ -304,9 +304,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             final int index = i;
             Song song = songs.get(i);
             
-            UikitListItem item = new UikitListItem(this);
-            item.setTitle(song.title);
-            item.setSubtitle(song.artist);
+            UikitListItem item = new UikitListItem(this, song.title, song.artist);
             item.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     if (bound && service != null) service.playIndex(index);
