@@ -16,9 +16,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import com.styisme.wearuikit.UikitButton;
+import android.widget.Button;
 import android.widget.ListView;
-import com.styisme.wearuikit.UikitProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,11 +36,11 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private ListView listView;
     private TextView titleView;
     private TextView artistView;
-    private UikitProgressBar progressBar;
-    private UikitButton playBtn;
-    private UikitButton prevBtn;
-    private UikitButton nextBtn;
-    private UikitButton modeBtn;
+    private SeekBar progressBar;
+    private Button playBtn;
+    private Button prevBtn;
+    private Button nextBtn;
+    private Button modeBtn;
 
     private ArrayAdapter<Song> adapter;
     private final List<Song> songs = new ArrayList<Song>();
@@ -84,9 +84,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        try {
-            com.styisme.wearuikit.UikitTheme.applyTheme(this);
-        } catch (Throwable ignored) {}
+        UikitBridge.init(this);
         setContentView(R.layout.activity_main);
         initViews();
         startAndBindService();
@@ -97,11 +95,11 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         titleView = (TextView) findViewById(R.id.song_title);
         artistView = (TextView) findViewById(R.id.song_artist);
         lyricView = (LyricView) findViewById(R.id.lyric_view);
-        progressBar = (UikitProgressBar) findViewById(R.id.progress);
-        playBtn = (UikitButton) findViewById(R.id.btn_play);
-        prevBtn = (UikitButton) findViewById(R.id.btn_prev);
-        nextBtn = (UikitButton) findViewById(R.id.btn_next);
-        modeBtn = (UikitButton) findViewById(R.id.btn_mode);
+        progressBar = (SeekBar) findViewById(R.id.progress);
+        playBtn = (Button) findViewById(R.id.btn_play);
+        prevBtn = (Button) findViewById(R.id.btn_prev);
+        nextBtn = (Button) findViewById(R.id.btn_next);
+        modeBtn = (Button) findViewById(R.id.btn_mode);
         listView = (ListView) findViewById(R.id.song_list);
 
         adapter = new ArrayAdapter<Song>(this, 0, songs) {

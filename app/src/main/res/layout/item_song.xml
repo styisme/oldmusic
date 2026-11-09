@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.styisme.wearuikit.UikitListItem xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="12dp"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="8dp">
 
     <TextView
         android:id="@+id/item_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="#FFFFFFFF"
-        android:textSize="16sp"
+        android:textSize="15sp"
         android:singleLine="true"
         android:ellipsize="end"/>
 
@@ -19,8 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="#99FFFFFF"
-        android:textSize="13sp"
-        android:layout_marginTop="2dp"
+        android:textSize="12sp"
         android:singleLine="true"
         android:ellipsize="end"/>
-</com.styisme.wearuikit.UikitListItem>
+</LinearLayout>
