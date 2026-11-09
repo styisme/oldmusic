@@ -18,14 +18,11 @@ public class ThemeHelper {
         String themeMode = sp.getString("theme_mode", UikitConfig.THEME_DARK);
         UikitConfig.setThemeMode(context, themeMode);
         
-        // 2. 处理主色调（默认赛博黄）
-        int primaryColor = sp.getInt("primary_color", 0xFFFBC02D);
-        UikitConfig.setCustomPrimaryColor(context, primaryColor);
-        
-        // 3. 强调色（默认浅黄）
+        // 2. 锁定主色调为赛博黄（不再提供切换）
+        UikitConfig.setCustomPrimaryColor(context, 0xFFFBC02D);
         UikitConfig.setCustomAccentColor(context, 0xFFFFD54F);
 
-        // 4. 屏幕形状适配（默认 SHAPE_AUTO，由系统自动判断）
+        // 3. 屏幕形状适配（默认 SHAPE_AUTO，由系统自动判断）
         int shape = sp.getInt("screen_shape", UikitConfig.SHAPE_AUTO);
         UikitConfig.setScreenShape(context, shape);
     }

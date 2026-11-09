@@ -111,24 +111,27 @@ public class PlaylistActivity extends Activity {
             String artist = song.artist;
             if (artist == null || artist.equals("<unknown>") || artist.trim().isEmpty()) artist = "未知歌手";
 
-            if (title.length() > 14) title = title.substring(0, 14) + "...";
-            if (artist.length() > 14) artist = artist.substring(0, 14) + "...";
+            if (title.length() > 12) title = title.substring(0, 12) + "...";
+            if (artist.length() > 12) artist = artist.substring(0, 12) + "...";
 
-            // 彻底移除 FrameLayout 包裹，直接把 UikitListItem 加到父容器里
-            UikitListItem item = new UikitListItem(this, title, artist);
-            if (i == currentIndex) {
-                item.setArrow(); 
-            }
+            // === 核心改动：使用 UikitButton 作为列表项 ===
+            UikitButton itemBtn = new UikitButton(this);
             
-            // 增加左、右、下边距，让胶囊卡片完美独立，呈现单块药丸状
+            // 如果当前正在播放，前面加个符号
+            String prefix = (i == currentIndex) ? "▶ " : "";
+            itemBtn.setText(prefix + title + "\n" + artist);
+            itemBtn.setTextSize(13);
+            itemBtn.setGravity(Gravity.CENTER);
+            itemBtn.setLines(2);
+            itemBtn.setPadding(dp(16), dp(12), dp(16), dp(12));
+            
+            // 设置按钮的间距，产生独立感
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.leftMargin = dp(8);
-            lp.rightMargin = dp(8);
             lp.bottomMargin = dp(12); 
-            item.setLayoutParams(lp);
+            itemBtn.setLayoutParams(lp);
 
-            item.setOnClickListener(new View.OnClickListener() {
+            itemBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (service != null) {
@@ -137,7 +140,7 @@ public class PlaylistActivity extends Activity {
                     }
                 }
             });
-            listContainer.addView(item);
+            listContainer.addView(itemBtn);
         }
     }
 

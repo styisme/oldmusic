@@ -69,31 +69,9 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemTheme);
 
-        // 2. 主题色
-        UikitListItem itemColor = new UikitListItem(this, "主题颜色", "更改应用主色调");
-        itemColor.setArrow();
-        itemColor.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                UikitUi.showList(SettingsActivity.this, "选择主题色",
-                        new String[]{"赛博黄", "极客绿", "经典蓝", "玫瑰红"},
-                        new UikitUi.OnItemSelectListener() {
-                            @Override
-                            public void onItemSelect(int position) {
-                                int color = 0xFFFBC02D;
-                                if (position == 1) color = 0xFF388E3C;
-                                else if (position == 2) color = 0xFF1976D2;
-                                else if (position == 3) color = 0xFFD32F2F;
-                                
-                                sp.edit().putInt("primary_color", color).commit();
-                                recreate(); 
-                            }
-                        }).show();
-            }
-        });
-        addItemWithMargin(root, itemColor);
+        // (主题颜色选项已被彻底删除)
 
-        // 3. 强制圆屏适配（补回来的开关）
+        // 2. 强制圆屏适配
         boolean isForceRound = sp.getInt("screen_shape", UikitConfig.SHAPE_AUTO) == UikitConfig.SHAPE_ROUND;
         UikitListItem itemRound = new UikitListItem(this, "强制圆屏模式", "强制启用圆屏的边距与布局");
         itemRound.setSwitch(isForceRound, new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -105,7 +83,7 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemRound);
 
-        // 4. 侧滑返回
+        // 3. 侧滑返回
         boolean swipeBack = sp.getBoolean("swipe_back", true);
         UikitListItem itemSwipe = new UikitListItem(this, "侧滑返回", "通过手势快速退出当前页面");
         itemSwipe.setSwitch(swipeBack, new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -116,7 +94,7 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemSwipe);
 
-        // 5. 低性能模式
+        // 4. 低性能模式
         UikitListItem itemPerf = new UikitListItem(this, "低性能模式", "关闭 3D 滚轮与滑动动画");
         itemPerf.setSwitch(UikitConfig.isLowPerf(this), new android.widget.CompoundButton.OnCheckedChangeListener() {
             @Override
