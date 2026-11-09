@@ -371,7 +371,17 @@ public class PlaybackService extends Service {
             notification = new Notification(
                     android.R.drawable.ic_media_play, song.title, System.currentTimeMillis());
             notification.flags |= Notification.FLAG_ONGOING_EVENT;
-            notification.setLatestEventInfo(this, song.title, song.artist, pi);
+            try {
+                java.lang.reflect.Method method = Notification.class.getMethod(
+                        "setLatestEventInfo", 
+                        android.content.Context.class, 
+                        java.lang.CharSequence.class, 
+                        java.lang.CharSequence.class, 
+                        PendingIntent.class);
+                method.invoke(notification, this, song.title, song.artist, pi);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         nm.notify(1, notification);
     }
