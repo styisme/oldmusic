@@ -1,6 +1,7 @@
 package com.example.oldmusic;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -50,11 +51,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 核心修复：读取用户保存的深色模式状态
-        boolean isDark = UikitConfig.prefs(this).getBoolean("is_dark_mode", true);
-        UikitConfig.setThemeMode(this, isDark ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
-        UikitConfig.setCustomPrimaryColor(this, 0xFFFBC02D);
-        
+        ThemeHelper.applyGlobalTheme(this);
         UikitTheme.applyTheme(this);
         UikitUi.applyEntryAnimation(this);
 
@@ -64,8 +61,9 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     }
 
     private void buildModernUi() {
-        ScrollView scroll = new ScrollView(this);
         boolean isDark = UikitTheme.isDarkMode(this);
+
+        ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
         
         LinearLayout root = new LinearLayout(this);
@@ -83,13 +81,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         titleView.setText("未播放");
         titleView.setTextSize(24);
         titleView.getPaint().setFakeBoldText(true);
-        titleView.setTextColor(UikitTheme.isDarkMode(this) ? 0xFFFFFFFF : 0xFF1C1B1F);
+        titleView.setTextColor(isDark ? 0xFFFFFFFF : 0xFF1C1B1F);
         titleView.setGravity(Gravity.CENTER);
         
         artistView = new TextView(this);
         artistView.setText("未知歌手");
         artistView.setTextSize(14);
-        artistView.setTextColor(UikitTheme.isDarkMode(this) ? 0xFFAAAAAA : 0xFF666666);
+        artistView.setTextColor(isDark ? 0xFFAAAAAA : 0xFF666666);
         artistView.setGravity(Gravity.CENTER);
         artistView.setPadding(0, dp(8), 0, dp(24));
 
@@ -168,28 +166,27 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         rowLp.bottomMargin = dp(24);
         root.addView(btnRow, rowLp);
 
-        // 5. 功能入口区（播放列表、UI 设置）
-        LinearLayout menuRow = new LinearLayout(this);
-        menuRow.setOrientation(LinearLayout.HORIZONTAL);
-        
+        // 5. 播放列表按钮（使用原生弹窗 API）
         UikitButton playlistBtn = new UikitButton(this);
         playlistBtn.setText("播放列表");
         playlistBtn.setTextSize(15);
-        LinearLayout.LayoutParams plLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        plLp.rightMargin = dp(8);
+        LinearLayout.LayoutParams plLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
+        plLp.bottomMargin = dp(12);
         playlistBtn.setLayoutParams(plLp);
         playlistBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, PlaylistActivity.class));
+                showPlaylistDialog();
             }
         });
+        root.addView(playlistBtn);
 
+        // 6. 设置按钮
         UikitButton settingsBtn = new UikitButton(this);
-        settingsBtn.setText("UI 设置");
+        settingsBtn.setText("设置");
         settingsBtn.setTextSize(15);
-        LinearLayout.LayoutParams setLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        setLp.leftMargin = dp(8);
+        LinearLayout.LayoutParams setLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
+        setLp.bottomMargin = dp(16);
         settingsBtn.setLayoutParams(setLp);
         settingsBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -197,18 +194,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
+        root.addView(settingsBtn);
 
-        menuRow.addView(playlistBtn);
-        menuRow.addView(settingsBtn);
-        root.addView(menuRow);
-
-        // 6. 播放模式
+        // 7. 播放模式
         modeBtn = new UikitButton(this);
         modeBtn.setText("顺序播放");
         modeBtn.setTextSize(14);
-        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
-        modeLp.topMargin = dp(16);
+        LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
         root.addView(modeBtn, modeLp);
         modeBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -221,23 +213,33 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // 监听颜色变化：如果设置页更改了颜色，返回主界面时自动重建刷新
-        int currentColor = UikitColor.getPrimaryColor(this);
-        if (currentColor != UikitConfig.prefs(this).getInt("last_applied_color", 0)) {
-            UikitConfig.prefs(this).edit().putInt("last_applied_color", currentColor).commit();
-            recreate();
+    // 核心：直接调用库自带的 UikitUi.showList 弹窗展示列表
+    private void showPlaylistDialog() {
+        if (songs.isEmpty()) {
+            UikitToast.show(this, "暂无本地歌曲");
+            return;
         }
-    }
+        
+        String[] songTitles = new String[songs.size()];
+        for (int i = 0; i < songs.size(); i++) {
+            String t = songs.get(i).title;
+            if (t == null || t.trim().isEmpty() || t.equals("<unknown>")) {
+                t = "未知歌曲";
+            }
+            // 截断一下过长的名字，防止弹窗被撑爆
+            if (t.length() > 12) t = t.substring(0, 12) + "...";
+            songTitles[i] = t;
+        }
 
-    @Override
-    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (UikitConfig.prefs(this).getBoolean("uikit_swipe_back", true)) {
-            if (UikitUi.handleSwipeBack(this, ev)) return true;
-        }
-        return super.dispatchTouchEvent(ev);
+        Dialog dialog = UikitUi.showList(this, "播放列表", songTitles, new UikitUi.OnItemSelectListener() {
+            @Override
+            public void onItemSelect(int position) {
+                if (bound && service != null) {
+                    service.playIndex(position);
+                }
+            }
+        });
+        dialog.show();
     }
 
     private int dp(int v) {
