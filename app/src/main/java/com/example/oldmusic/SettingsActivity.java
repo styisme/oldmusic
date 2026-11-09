@@ -33,6 +33,7 @@ public class SettingsActivity extends Activity {
         
         // 强制覆盖库的内部主题，避免它去读系统浅色模式导致 UI 变白
         UikitConfig.setThemeMode(this, isDark ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
+        UikitConfig.setScreenShape(this, UikitConfig.SHAPE_ROUND);
         UikitTheme.applyTheme(this);
 
         buildUI();
@@ -42,10 +43,12 @@ public class SettingsActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         // 动态背景色
         scroll.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
+        scroll.setClipToPadding(false);
+        scroll.setPadding(0, dp(32), 0, dp(32));
         
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(24), dp(32), dp(24), dp(32));
+        root.setPadding(dp(24), dp(16), dp(24), dp(32));
         scroll.addView(root);
         setContentView(scroll);
 

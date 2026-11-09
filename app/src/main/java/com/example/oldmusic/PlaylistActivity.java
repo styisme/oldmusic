@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -47,28 +49,42 @@ public class PlaylistActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 核心修复：读取用户保存的深色模式状态
+        // 读取深色模式配置
         boolean isDark = UikitConfig.prefs(this).getBoolean("is_dark_mode", true);
         UikitConfig.setThemeMode(this, isDark ? UikitConfig.THEME_DARK : UikitConfig.THEME_LIGHT);
+        
+        // 关键修复：强制开启圆屏适配，防止卡片切边
+        UikitConfig.setScreenShape(this, UikitConfig.SHAPE_ROUND);
         UikitTheme.applyTheme(this);
 
+        // 使用 FrameLayout 作为根，确保背景全黑
+        FrameLayout rootFrame = new FrameLayout(this);
+        rootFrame.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
+
         ScrollView scroll = new ScrollView(this);
-        boolean isDark = UikitTheme.isDarkMode(this);
-        scroll.setBackgroundColor(isDark ? 0xFF121212 : 0xFFF4F6F8);
+        scroll.setClipToPadding(false);
+        scroll.setVerticalScrollBarEnabled(false);
+        // 圆屏安全区：上下留白，方便滑到顶/底时依然居中
+        scroll.setPadding(0, dp(32), 0, dp(32)); 
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(24), dp(32), dp(24), dp(32));
+        // 加大左右边距 (24dp)，防止圆屏边缘切掉卡片
+        root.setPadding(dp(24), dp(16), dp(24), dp(32));
         scroll.addView(root);
-        setContentView(scroll);
 
+        rootFrame.addView(scroll);
+        setContentView(rootFrame);
+
+        // 库自带的圆屏判断和边距（会再次检查并叠加上去）
         UikitUi.applyRoundPadding(this, root);
+        // 3D 滚轮效果
         UikitUi.setupWheelScroll(scroll, root);
 
         TextView title = new TextView(this);
         title.setText("播放列表");
         title.setTextSize(22);
-        title.setTextColor(0xFFFBC02D);
+        title.setTextColor(UikitColor.getPrimaryColor(this));
         title.getPaint().setFakeBoldText(true);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, dp(24));
@@ -105,9 +121,13 @@ public class PlaylistActivity extends Activity {
             String artist = song.artist;
             if (artist == null || artist.equals("<unknown>") || artist.trim().isEmpty()) artist = "未知歌手";
 
+            // 对超长标题做截断处理，防止把卡片撑爆
+            if (title.length() > 15) title = title.substring(0, 15) + "...";
+            if (artist.length() > 15) artist = artist.substring(0, 15) + "...";
+
             UikitListItem item = new UikitListItem(this, title, artist);
             if (i == currentIndex) {
-                item.setArrow(); // 当前播放的歌曲右边加个箭头提示
+                item.setArrow(); 
             }
             
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -120,12 +140,16 @@ public class PlaylistActivity extends Activity {
                 public void onClick(View v) {
                     if (service != null) {
                         service.playIndex(index);
-                        finish(); // 选中后自动返回主界面
+                        finish();
                     }
                 }
             });
             listContainer.addView(item);
         }
+    }
+
+    private int dp(int v) {
+        return (int) (v * getResources().getDisplayMetrics().density);
     }
 
     @Override
@@ -134,10 +158,6 @@ public class PlaylistActivity extends Activity {
             if (UikitUi.handleSwipeBack(this, ev)) return true;
         }
         return super.dispatchTouchEvent(ev);
-    }
-
-    private int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density);
     }
 
     @Override
