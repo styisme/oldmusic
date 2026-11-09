@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg_dark"
-    android:padding="12dp">
+    android:background="#FF101010"
+    android:padding="16dp">
 
     <TextView
         android:id="@+id/song_title"
@@ -12,7 +12,8 @@
         android:layout_height="wrap_content"
         android:text="未播放"
         android:textColor="#FFFFFFFF"
-        android:textSize="18sp"
+        android:textSize="20sp"
+        android:textStyle="bold"
         android:singleLine="true"
         android:ellipsize="marquee"/>
 
@@ -22,64 +23,75 @@
         android:layout_height="wrap_content"
         android:text=""
         android:textColor="#B3FFFFFF"
-        android:textSize="13sp"
+        android:textSize="14sp"
+        android:layout_marginTop="4dp"
         android:singleLine="true"/>
 
+    <!-- 自定义歌词 View -->
     <com.example.oldmusic.LyricView
         android:id="@+id/lyric_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="3"
-        android:layout_marginTop="8dp"/>
+        android:layout_marginTop="12dp"/>
 
     <ListView
         android:id="@+id/song_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="2"
+        android:layout_marginTop="8dp"
         android:divider="#22FFFFFF"
         android:dividerHeight="1dp"
         android:cacheColorHint="#00000000"/>
 
-    <SeekBar
+    <!-- 使用 wear-uikit 的进度条组件 -->
+    <com.styisme.wearuikit.UikitProgressBar
         android:id="@+id/progress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"/>
+        android:layout_marginTop="12dp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:layout_marginTop="4dp">
+        android:layout_marginTop="12dp">
 
-        <Button
+        <!-- 使用 wear-uikit 的按钮组件 -->
+        <com.styisme.wearuikit.UikitButton
             android:id="@+id/btn_prev"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginRight="4dp"
             android:text="上一首"/>
 
-        <Button
+        <com.styisme.wearuikit.UikitButton
             android:id="@+id/btn_play"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginLeft="4dp"
+            android:layout_marginRight="4dp"
             android:text="播放"/>
 
-        <Button
+        <com.styisme.wearuikit.UikitButton
             android:id="@+id/btn_next"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginLeft="4dp"
+            android:layout_marginRight="4dp"
             android:text="下一首"/>
 
-        <Button
+        <com.styisme.wearuikit.UikitButton
             android:id="@+id/btn_mode"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginLeft="4dp"
             android:text="顺序"/>
     </LinearLayout>
 </LinearLayout>
