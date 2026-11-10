@@ -223,6 +223,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         }
         
         ArrayList<UikitListItemModel> items = new ArrayList<UikitListItemModel>();
+        int currentIndex = (bound && service != null) ? service.getCurrentIndex() : -1;
+        
         for (int i = 0; i < songs.size(); i++) {
             Song song = songs.get(i);
             String t = song.title;
@@ -237,7 +239,15 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             if (t.length() > 16) t = t.substring(0, 16) + "...";
             if (a.length() > 16) a = a.substring(0, 16) + "...";
             
-            items.add(new UikitListItemModel(t, a));
+            // 【新增】利用强调色 API，高亮当前播放的歌曲
+            int accentColor = 0; // 0 表示默认颜色
+            if (i == currentIndex) {
+                accentColor = 0xFFFBC02D; // 当前播放的歌用主题“赛博黄”高亮
+                t = "▶ " + t; // 增加一个小图标增强辨识度
+            }
+            
+            // 传入第三个参数 accentColor
+            items.add(new UikitListItemModel(t, a, accentColor));
         }
 
         // 调用全新的全屏列表 API (请求码 1001)
