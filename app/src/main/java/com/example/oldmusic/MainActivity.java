@@ -21,6 +21,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.uikit.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -213,33 +215,33 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
     }
 
-    // 核心：直接调用库自带的 UikitUi.showList 弹窗展示列表
+    // 核心：调用 v1.3.0 全新的全屏列表（带 3D 滚轮特效）
     private void showPlaylistDialog() {
         if (songs.isEmpty()) {
             UikitToast.show(this, "暂无本地歌曲");
             return;
         }
         
-        String[] songTitles = new String[songs.size()];
+        ArrayList<UikitListItemModel> items = new ArrayList<UikitListItemModel>();
         for (int i = 0; i < songs.size(); i++) {
-            String t = songs.get(i).title;
+            Song song = songs.get(i);
+            String t = song.title;
             if (t == null || t.trim().isEmpty() || t.equals("<unknown>")) {
                 t = "未知歌曲";
             }
-            // 截断一下过长的名字，防止弹窗被撑爆
-            if (t.length() > 12) t = t.substring(0, 12) + "...";
-            songTitles[i] = t;
+            String a = song.artist;
+            if (a == null || a.trim().isEmpty() || a.equals("<unknown>")) {
+                a = "未知歌手";
+            }
+            // 截断过长的文本，保证显示优雅
+            if (t.length() > 16) t = t.substring(0, 16) + "...";
+            if (a.length() > 16) a = a.substring(0, 16) + "...";
+            
+            items.add(new UikitListItemModel(t, a));
         }
 
-        Dialog dialog = UikitUi.showList(this, "播放列表", songTitles, new UikitUi.OnItemSelectListener() {
-            @Override
-            public void onItemSelect(int position) {
-                if (bound && service != null) {
-                    service.playIndex(position);
-                }
-            }
-        });
-        dialog.show();
+        // 调用全新的全屏列表 API (请求码 1001)
+        UikitFullListActivity.show(this, "播放列表", items, 1001);
     }
 
     private int dp(int v) {
@@ -350,6 +352,17 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             if (m == PlaybackService.MODE_REPEAT_ONE) modeBtn.setText("单曲循环");
             else if (m == PlaybackService.MODE_SHUFFLE) modeBtn.setText("随机播放");
             else modeBtn.setText("顺序播放");
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1001 && resultCode == RESULT_OK && data != null) {
+            int index = data.getIntExtra(UikitFullListActivity.EXTRA_RESULT_INDEX, -1);
+            if (index >= 0 && bound && service != null) {
+                service.playIndex(index);
+            }
         }
     }
 
