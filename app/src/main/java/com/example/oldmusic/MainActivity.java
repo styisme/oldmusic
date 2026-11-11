@@ -1,7 +1,6 @@
 package com.example.oldmusic;
 
 import android.app.Activity;
-import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -21,8 +20,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.uikit.*;
-import java.util.ArrayList;
-import java.util.List;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +35,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private TextView artistView;
     private LyricView lyricView;
     private UikitSlider slider;
-    private boolean isUserSeeking = false;
     private UikitButton playBtn;
     private UikitButton modeBtn;
 
@@ -104,65 +100,28 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         lyricLp.bottomMargin = dp(24);
         root.addView(lyricView, lyricLp);
 
-        // 3. 滑动进度条 (v1.4.0 新增)
+        // 3. 进度条 (UikitSlider 原生 API)
         slider = new UikitSlider(this);
+        slider.setMaxProgress(100f); // 源码中默认最大 100
         slider.setProgress(0f);
         LinearLayout.LayoutParams pbLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(32));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(48)); // 高度给足方便触摸
         pbLp.bottomMargin = dp(16);
         root.addView(slider, pbLp);
 
-        // 绑定滑动监听（使用反射兼容不同的监听器命名）
-        try {
-            java.lang.reflect.Method setListenerMethod = slider.getClass().getMethod(
-                    "setOnProgressChangedListener", 
-                    Class.forName("org.uikit.UikitSlider$OnProgressChangedListener"));
-            
-            Object listener = java.lang.reflect.Proxy.newProxyInstance(
-                    getClassLoader(),
-                    new Class[]{Class.forName("org.uikit.UikitSlider$OnProgressChangedListener")},
-                    new java.lang.reflect.InvocationHandler() {
-                        @Override
-                        public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) {
-                            if (method.getName().equals("onProgressChanged")) {
-                                float progress = (Float) args[0];
-                                boolean fromUser = (Boolean) args[1];
-                                if (fromUser && bound && service != null) {
-                                    int dur = service.getDuration();
-                                    service.seekTo((int) (progress * dur));
-                                }
-                            }
-                            return null;
-                        }
-                    });
-            setListenerMethod.invoke(slider, listener);
-        } catch (Exception e1) {
-            // 如果上述接口不对，尝试原生的 SeekBar 监听接口
-            try {
-                java.lang.reflect.Method setListenerMethod = slider.getClass().getMethod(
-                        "setOnSeekBarChangeListener", android.widget.SeekBar.OnSeekBarChangeListener.class);
-                setListenerMethod.invoke(slider, new android.widget.SeekBar.OnSeekBarChangeListener() {
-                    @Override
-                    public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                        if (fromUser && bound && service != null) {
-                            int dur = service.getDuration();
-                            service.seekTo((int) (progress / 100f * dur)); // 假设是 0-100
-                        }
+        // 绑定滑动监听
+        slider.setOnProgressChangedListener(new UikitSlider.OnProgressChangedListener() {
+            @Override
+            public void onProgressChanged(float progress) {
+                if (bound && service != null) {
+                    int dur = service.getDuration();
+                    if (dur > 0) {
+                        // progress 是 0-100，计算真实时间并跳转
+                        service.seekTo((int) (progress / 100f * dur));
                     }
-                    @Override
-                    public void onStartTrackingTouch(android.widget.SeekBar seekBar) {
-                        isUserSeeking = true;
-                    }
-                    @Override
-                    public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
-                        isUserSeeking = false;
-                    }
-                });
-            } catch (Exception e2) {
-                // 如果都没有，说明该版本可能不支持拖动，仅显示
-                System.out.println("UikitSlider 未找到滑动监听接口，仅支持展示进度。");
+                }
             }
-        }
+        });
 
         // 4. 控制按钮区
         LinearLayout btnRow = new LinearLayout(this);
@@ -221,7 +180,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         rowLp.bottomMargin = dp(24);
         root.addView(btnRow, rowLp);
 
-        // 5. 播放列表按钮（使用原生弹窗 API）
+        // 5. 菜单按钮
         UikitButton playlistBtn = new UikitButton(this);
         playlistBtn.setText("播放列表");
         playlistBtn.setTextSize(15);
@@ -236,7 +195,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
         root.addView(playlistBtn);
 
-        // 6. 设置按钮
         UikitButton settingsBtn = new UikitButton(this);
         settingsBtn.setText("设置");
         settingsBtn.setTextSize(15);
@@ -251,7 +209,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
         root.addView(settingsBtn);
 
-        // 7. 播放模式
+        // 6. 播放模式
         modeBtn = new UikitButton(this);
         modeBtn.setText("顺序播放");
         modeBtn.setTextSize(14);
@@ -268,7 +226,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
     }
 
-    // 核心：调用 v1.3.0 全新的全屏列表（带 3D 滚轮特效）
+    // 全屏 3D 列表
     private void showPlaylistDialog() {
         if (songs.isEmpty()) {
             UikitToast.show(this, "暂无本地歌曲");
@@ -281,30 +239,33 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         for (int i = 0; i < songs.size(); i++) {
             Song song = songs.get(i);
             String t = song.title;
-            if (t == null || t.trim().isEmpty() || t.equals("<unknown>")) {
-                t = "未知歌曲";
-            }
+            if (t == null || t.trim().isEmpty() || t.equals("<unknown>")) t = "未知歌曲";
             String a = song.artist;
-            if (a == null || a.trim().isEmpty() || a.equals("<unknown>")) {
-                a = "未知歌手";
-            }
-            // 截断过长的文本，保证显示优雅
+            if (a == null || a.trim().isEmpty() || a.equals("<unknown>")) a = "未知歌手";
+            
             if (t.length() > 16) t = t.substring(0, 16) + "...";
             if (a.length() > 16) a = a.substring(0, 16) + "...";
             
-            // 【新增】利用强调色 API，高亮当前播放的歌曲
-            int accentColor = 0; // 0 表示默认颜色
+            int accentColor = 0;
             if (i == currentIndex) {
-                accentColor = 0xFFFBC02D; // 当前播放的歌用主题“赛博黄”高亮
-                t = "▶ " + t; // 增加一个小图标增强辨识度
+                accentColor = 0xFFFBC02D;
+                t = "▶ " + t;
             }
-            
-            // 传入第三个参数 accentColor
             items.add(new UikitListItemModel(t, a, accentColor));
         }
 
-        // 调用全新的全屏列表 API (请求码 1001)
         UikitFullListActivity.show(this, "播放列表", items, 1001);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1001 && resultCode == RESULT_OK && data != null) {
+            int index = data.getIntExtra(UikitFullListActivity.EXTRA_RESULT_INDEX, -1);
+            if (index >= 0 && bound && service != null) {
+                service.playIndex(index);
+            }
+        }
     }
 
     private int dp(int v) {
@@ -350,9 +311,12 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             if (bound && service != null) {
                 int pos = service.getPosition();
                 int dur = service.getDuration();
-                if (!isUserSeeking) {
-                    if (dur > 0) slider.setProgress((float) pos / dur);
-                    else slider.setProgress(0f);
+                if (dur > 0) {
+                    // 将当前时间转换为 0-100 的进度
+                    float progress = (float) pos / dur * 100f;
+                    slider.setProgress(progress);
+                } else {
+                    slider.setProgress(0f);
                 }
                 updateLyric(pos);
             }
@@ -417,17 +381,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             if (m == PlaybackService.MODE_REPEAT_ONE) modeBtn.setText("单曲循环");
             else if (m == PlaybackService.MODE_SHUFFLE) modeBtn.setText("随机播放");
             else modeBtn.setText("顺序播放");
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 1001 && resultCode == RESULT_OK && data != null) {
-            int index = data.getIntExtra(UikitFullListActivity.EXTRA_RESULT_INDEX, -1);
-            if (index >= 0 && bound && service != null) {
-                service.playIndex(index);
-            }
         }
     }
 
