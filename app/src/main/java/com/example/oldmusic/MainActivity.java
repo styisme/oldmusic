@@ -37,7 +37,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private TextView titleView;
     private TextView artistView;
     private LyricView lyricView;
-    private UikitProgressBar progressBar;
+    private UikitSlider slider;
+    private boolean isUserSeeking = false;
     private UikitButton playBtn;
     private UikitButton modeBtn;
 
@@ -103,13 +104,65 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         lyricLp.bottomMargin = dp(24);
         root.addView(lyricView, lyricLp);
 
-        // 3. 进度条
-        progressBar = new UikitProgressBar(this);
-        progressBar.setProgress(0f);
+        // 3. 滑动进度条 (v1.4.0 新增)
+        slider = new UikitSlider(this);
+        slider.setProgress(0f);
         LinearLayout.LayoutParams pbLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(8));
-        pbLp.bottomMargin = dp(32);
-        root.addView(progressBar, pbLp);
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(32));
+        pbLp.bottomMargin = dp(16);
+        root.addView(slider, pbLp);
+
+        // 绑定滑动监听（使用反射兼容不同的监听器命名）
+        try {
+            java.lang.reflect.Method setListenerMethod = slider.getClass().getMethod(
+                    "setOnProgressChangedListener", 
+                    Class.forName("org.uikit.UikitSlider$OnProgressChangedListener"));
+            
+            Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    getClassLoader(),
+                    new Class[]{Class.forName("org.uikit.UikitSlider$OnProgressChangedListener")},
+                    new java.lang.reflect.InvocationHandler() {
+                        @Override
+                        public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) {
+                            if (method.getName().equals("onProgressChanged")) {
+                                float progress = (Float) args[0];
+                                boolean fromUser = (Boolean) args[1];
+                                if (fromUser && bound && service != null) {
+                                    int dur = service.getDuration();
+                                    service.seekTo((int) (progress * dur));
+                                }
+                            }
+                            return null;
+                        }
+                    });
+            setListenerMethod.invoke(slider, listener);
+        } catch (Exception e1) {
+            // 如果上述接口不对，尝试原生的 SeekBar 监听接口
+            try {
+                java.lang.reflect.Method setListenerMethod = slider.getClass().getMethod(
+                        "setOnSeekBarChangeListener", android.widget.SeekBar.OnSeekBarChangeListener.class);
+                setListenerMethod.invoke(slider, new android.widget.SeekBar.OnSeekBarChangeListener() {
+                    @Override
+                    public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                        if (fromUser && bound && service != null) {
+                            int dur = service.getDuration();
+                            service.seekTo((int) (progress / 100f * dur)); // 假设是 0-100
+                        }
+                    }
+                    @Override
+                    public void onStartTrackingTouch(android.widget.SeekBar seekBar) {
+                        isUserSeeking = true;
+                    }
+                    @Override
+                    public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+                        isUserSeeking = false;
+                    }
+                });
+            } catch (Exception e2) {
+                // 如果都没有，说明该版本可能不支持拖动，仅显示
+                System.out.println("UikitSlider 未找到滑动监听接口，仅支持展示进度。");
+            }
+        }
 
         // 4. 控制按钮区
         LinearLayout btnRow = new LinearLayout(this);
@@ -297,8 +350,10 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             if (bound && service != null) {
                 int pos = service.getPosition();
                 int dur = service.getDuration();
-                if (dur > 0) progressBar.setProgress((float) pos / dur);
-                else progressBar.setProgress(0f);
+                if (!isUserSeeking) {
+                    if (dur > 0) slider.setProgress((float) pos / dur);
+                    else slider.setProgress(0f);
+                }
                 updateLyric(pos);
             }
             handler.postDelayed(this, 300L);
