@@ -9,18 +9,15 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
-
-
 import android.os.Handler;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.LinearLayout;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,9 +47,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private List<LrcParser.Line> lyrics = new ArrayList<LrcParser.Line>();
     private List<Song> songs = new ArrayList<Song>();
 
-    // 长按快进/快退控制
     private boolean isLongPressing = false;
-    private Runnable longPressRunnable;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -87,7 +82,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         UikitUi.applyRoundPadding(this, root);
         UikitUi.setupWheelScroll(scroll, root);
 
-        // 1. 骨架屏 (初始隐藏)
+        // 1. 骨架屏
         skeleton = new UikitSkeleton(this);
         skeleton.setVisibility(View.GONE);
         LinearLayout.LayoutParams skLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(40));
@@ -108,11 +103,11 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         artistView.setTextColor(isDark ? 0xFFAAAAAA : 0xFF666666);
         artistView.setGravity(Gravity.CENTER);
         artistView.setPadding(0, dp(8), 0, dp(24));
-        // 点击封面/文字可查看大图 (测试全屏查看器)
+        
         titleView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                UikitImageViewerActivity.show(MainActivity.this, "demo_image.png"); // 需要 assets 里有图
+                UikitImageViewerActivity.show(MainActivity.this, "demo_image.png");
             }
         });
 
@@ -125,7 +120,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         lyricLp.bottomMargin = dp(24);
         root.addView(lyricView, lyricLp);
 
-        // 4. 进度条 (UikitSlider)
+        // 4. 进度条
         slider = new UikitSlider(this);
         slider.setMaxProgress(100f);
         slider.setProgress(0f);
@@ -143,96 +138,52 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             }
         });
 
-        // 5. 控制按钮区 (加入长按快进/快退)
+        // 5. 控制按钮区 (完美居中)
         LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
         btnRow.setGravity(Gravity.CENTER);
 
-        UikitButton prevBtn = new UikitButton(this);
-        prevBtn.setText("");
-        prevBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_prev, 0, 0, 0);
-        prevBtn.setTextSize(14);
-        LinearLayout.LayoutParams prevLp = new LinearLayout.LayoutParams(0, dp(56), 1f);
-        prevLp.rightMargin = dp(8);
-        prevBtn.setLayoutParams(prevLp);
-        
-        // 长按快退
-        prevBtn.setOnLongClickListener(new View.OnLongClickListener() {
+        FrameLayout prevBtn = createIconButton(R.drawable.ic_uikit_prev, 64, 64);
+        ((LinearLayout.LayoutParams) prevBtn.getLayoutParams()).rightMargin = dp(12);
+        prevBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onLongClick(View v) {
-                isLongPressing = true;
-                startSeeking(-10000);
-                return true;
-            }
-        });
-        prevBtn.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
-                    stopSeeking();
-                } else if (event.getAction() == MotionEvent.ACTION_DOWN && !isLongPressing) {
-                    if (bound && service != null) service.prev();
-                    WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
-                }
-                return false;
+            public void onClick(View v) {
+                if (bound && service != null) service.prev();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
             }
         });
 
-        playBtn = new UikitButton(this);
-        playBtn.setText("");
-        playBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_play, 0, 0, 0);
-        playBtn.setTextSize(18);
-        LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(0, dp(56), 1.2f);
-        playLp.leftMargin = dp(8);
-        playLp.rightMargin = dp(8);
-        playBtn.setLayoutParams(playLp);
+        playBtn = createIconButton(R.drawable.ic_uikit_play, 80, 64);
+        ((LinearLayout.LayoutParams) playBtn.getLayoutParams()).leftMargin = dp(4);
+        ((LinearLayout.LayoutParams) playBtn.getLayoutParams()).rightMargin = dp(4);
         playBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (UikitClickUtils.isFastDoubleClick()) return; // 防抖
+                if (UikitClickUtils.isFastDoubleClick()) return;
                 if (bound && service != null) service.toggle();
                 WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
             }
         });
 
-        UikitButton nextBtn = new UikitButton(this);
-        nextBtn.setText("");
-        nextBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_next, 0, 0, 0);
-        nextBtn.setTextSize(14);
-        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(0, dp(56), 1f);
-        nextLp.leftMargin = dp(8);
-        nextBtn.setLayoutParams(nextLp);
-        
-        // 长按快进
-        nextBtn.setOnLongClickListener(new View.OnLongClickListener() {
+        FrameLayout nextBtn = createIconButton(R.drawable.ic_uikit_next, 64, 64);
+        ((LinearLayout.LayoutParams) nextBtn.getLayoutParams()).leftMargin = dp(12);
+        nextBtn.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onLongClick(View v) {
-                isLongPressing = true;
-                startSeeking(10000);
-                return true;
-            }
-        });
-        nextBtn.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
-                    stopSeeking();
-                } else if (event.getAction() == MotionEvent.ACTION_DOWN && !isLongPressing) {
-                    if (bound && service != null) service.next();
-                    WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
-                }
-                return false;
+            public void onClick(View v) {
+                if (bound && service != null) service.next();
+                WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
             }
         });
 
         btnRow.addView(prevBtn);
         btnRow.addView(playBtn);
         btnRow.addView(nextBtn);
+
         LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         rowLp.bottomMargin = dp(24);
         root.addView(btnRow, rowLp);
 
-        // 6. 菜单按钮
+        // 6. 菜单按钮区
         LinearLayout menuRow1 = new LinearLayout(this);
         menuRow1.setOrientation(LinearLayout.HORIZONTAL);
         menuRow1.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -266,7 +217,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             }
         });
 
-        // 7. 设置按钮 + 播放模式
         LinearLayout menuRow2 = new LinearLayout(this);
         menuRow2.setOrientation(LinearLayout.HORIZONTAL);
         menuRow2.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -298,24 +248,70 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
     }
 
-    private void startSeeking(final int deltaMs) {
-        if (!bound || service == null) return;
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (isLongPressing) {
-                    int pos = service.getPosition() + deltaMs;
-                    if (pos < 0) pos = 0;
-                    service.seekTo(pos);
-                    WearHardwareUtils.vibrate(MainActivity.this, WearHardwareUtils.HAPTIC_LIGHT);
-                    handler.postDelayed(this, 500); // 每 500ms 跳一次
-                }
-            }
-        });
+    // 图标按钮：FrameLayout 包裹
+    private FrameLayout createIconButton(int resId, int widthDp, int heightDp) {
+        FrameLayout wrapper = new FrameLayout(this);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(widthDp), dp(heightDp));
+        wrapper.setLayoutParams(lp);
+
+        UikitButton btn = new UikitButton(this);
+        btn.setText("");
+        btn.setClickable(false);
+        wrapper.addView(btn, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(resId);
+        int textColor = UikitColor.getOnPrimaryColor(this);
+        if (Build.VERSION.SDK_INT >= 21) {
+            icon.setImageTintList(android.content.res.ColorStateList.valueOf(textColor));
+        } else {
+            icon.setColorFilter(textColor);
+        }
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(28), dp(28));
+        iconLp.gravity = Gravity.CENTER;
+        wrapper.addView(icon, iconLp);
+        wrapper.setTag(icon);
+        
+        return wrapper;
     }
 
-    private void stopSeeking() {
-        isLongPressing = false;
+    // 图文按钮：FrameLayout 包裹
+    private FrameLayout createTextIconButton(int resId, String text) {
+        FrameLayout wrapper = new FrameLayout(this);
+        UikitButton btn = new UikitButton(this);
+        btn.setText("");
+        btn.setClickable(false);
+        wrapper.addView(btn, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.HORIZONTAL);
+        content.setGravity(Gravity.CENTER);
+
+        int textColor = UikitColor.getOnPrimaryColor(this);
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(resId);
+        if (Build.VERSION.SDK_INT >= 21) {
+            icon.setImageTintList(android.content.res.ColorStateList.valueOf(textColor));
+        } else {
+            icon.setColorFilter(textColor);
+        }
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(18), dp(18));
+        iconLp.rightMargin = dp(6);
+        content.addView(icon, iconLp);
+
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTextSize(14);
+        tv.setTextColor(textColor);
+        content.addView(tv);
+
+        FrameLayout.LayoutParams contentLp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+        contentLp.gravity = Gravity.CENTER;
+        wrapper.addView(content, contentLp);
+        
+        wrapper.setTag(tv);
+        return wrapper;
     }
 
     private void showPlaylistDialog() {
@@ -357,73 +353,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 UikitToast.show(this, minutes > 0 ? ("已设置 " + minutes + " 分钟后暂停") : "已取消定时");
             }
         }
-    }
-
-
-    // 图标按钮：UikitButton作背景 + 绝对居中的ImageView
-    private FrameLayout createIconButton(int resId, int widthDp, int heightDp) {
-        FrameLayout wrapper = new FrameLayout(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(widthDp), dp(heightDp));
-        wrapper.setLayoutParams(lp);
-
-        UikitButton btn = new UikitButton(this);
-        btn.setText("");
-        btn.setClickable(false); // 外层接管点击
-        wrapper.addView(btn, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(resId);
-        int textColor = UikitColor.getOnPrimaryColor(this);
-        if (android.os.Build.VERSION.SDK_INT >= 21) {
-            icon.setImageTintList(android.content.res.ColorStateList.valueOf(textColor));
-        } else {
-            icon.setColorFilter(textColor);
-        }
-        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(28), dp(28));
-        iconLp.gravity = Gravity.CENTER;
-        wrapper.addView(icon, iconLp);
-        wrapper.setTag(icon);
-        
-        return wrapper;
-    }
-
-    // 图文按钮：UikitButton作背景 + 居中的 LinearLayout(图+文)
-    private FrameLayout createTextIconButton(int resId, String text) {
-        FrameLayout wrapper = new FrameLayout(this);
-        UikitButton btn = new UikitButton(this);
-        btn.setText("");
-        btn.setClickable(false);
-        wrapper.addView(btn, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.HORIZONTAL);
-        content.setGravity(Gravity.CENTER);
-
-        int textColor = UikitColor.getOnPrimaryColor(this);
-
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(resId);
-        if (android.os.Build.VERSION.SDK_INT >= 21) {
-            icon.setImageTintList(android.content.res.ColorStateList.valueOf(textColor));
-        } else {
-            icon.setColorFilter(textColor);
-        }
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(18), dp(18));
-        iconLp.rightMargin = dp(6);
-        content.addView(icon, iconLp);
-
-        TextView tv = new TextView(this);
-        tv.setText(text);
-        tv.setTextSize(14);
-        tv.setTextColor(textColor);
-        content.addView(tv);
-
-        FrameLayout.LayoutParams contentLp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-        contentLp.gravity = Gravity.CENTER;
-        wrapper.addView(content, contentLp);
-        
-        wrapper.setTag(tv); // 方便后续更新文字
-        return wrapper;
     }
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density); }
@@ -475,7 +404,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, REQ_PERM);
             return;
         }
-        skeleton.setVisibility(View.VISIBLE); // 显示骨架屏
+        skeleton.setVisibility(View.VISIBLE);
         songs.clear();
         Cursor cursor = null;
         try {
@@ -498,7 +427,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         } finally {
             if (cursor != null) cursor.close();
         }
-        skeleton.setVisibility(View.GONE); // 隐藏骨架屏
+        skeleton.setVisibility(View.GONE);
     }
 
     @Override
@@ -522,7 +451,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private void updatePlayButton(boolean playing) {
         if (playBtn != null) {
             ImageView icon = (ImageView) playBtn.getTag();
-            icon.setImageResource(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play);
+            if (icon != null) icon.setImageResource(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play);
         }
     }
 
@@ -532,11 +461,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             String text = "顺序播放";
             if (m == PlaybackService.MODE_REPEAT_ONE) text = "单曲循环";
             else if (m == PlaybackService.MODE_SHUFFLE) text = "随机播放";
-            
             TextView tv = (TextView) modeBtn.getTag();
-            if (tv != null) {
-                tv.setText(text);
-            }
+            if (tv != null) tv.setText(text);
         }
     }
 
