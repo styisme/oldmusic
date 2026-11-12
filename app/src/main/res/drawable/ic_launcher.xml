@@ -5,31 +5,21 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- 深空灰圆角背景 -->
+    <!-- 纯黑圆形底 -->
     <path
         android:fillColor="#121212"
-        android:pathData="M20,4 L88,4 C96.8,4 104,11.2 104,20 L104,88 C104,96.8 96.8,104 88,104 L20,104 C11.2,104 4,96.8 4,88 L4,20 C4,11.2 11.2,4 20,4 Z" />
+        android:pathData="M54,54 m-50,0 a50,50 0,1 1,100 0 a50,50 0,1 1,-100 0" />
 
-    <!-- 赛博黄描边 (内圈) -->
+    <!-- 粗赛博黄外环 (完美对应你桌面左侧图标的粗环) -->
     <path
         android:strokeColor="#FBC02D"
-        android:strokeWidth="2"
+        android:strokeWidth="6"
         android:fillColor="#00000000"
-        android:pathData="M22,10 L86,10 C92.6,10 98,15.4 98,22 L98,86 C98,92.6 92.6,98 86,98 L22,98 C15.4,98 10,92.6 10,86 L10,22 C10,15.4 15.4,10 22,10 Z" />
+        android:pathData="M54,54 m-40,0 a40,40 0,1 1,80 0 a40,40 0,1 1,-80 0" />
 
-    <!-- 赛博黄播放键 -->
+    <!-- 内部纯白极简播放三角 -->
     <path
-        android:fillColor="#FBC02D"
-        android:pathData="M42,34 L42,74 L74,54 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,38 L46,70 L70,54 Z" />
         
-    <!-- 底部三个极简律动点 -->
-    <path
-        android:fillColor="#FBC02D"
-        android:pathData="M36,82 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FBC02D"
-        android:pathData="M54,82 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
-    <path
-        android:fillColor="#FBC02D"
-        android:pathData="M72,82 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
 </vector>
