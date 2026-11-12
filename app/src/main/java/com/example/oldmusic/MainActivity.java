@@ -39,8 +39,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     private TextView artistView;
     private LyricView lyricView;
     private UikitSlider slider;
-    private FrameLayout playBtn;
-    private FrameLayout modeBtn;
+    private UikitButton playBtn;
+    private UikitButton modeBtn;
     private UikitSkeleton skeleton;
 
     private final Handler handler = new Handler();
@@ -142,8 +142,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
         btnRow.setGravity(Gravity.CENTER);
 
-        FrameLayout prevBtn = createIconButton(R.drawable.ic_uikit_prev, 64, 64);
-        ((LinearLayout.LayoutParams) prevBtn.getLayoutParams()).rightMargin = dp(12);
+        UikitButton prevBtn = createIconButton(R.drawable.ic_uikit_prev, 64, 64);
         prevBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -153,8 +152,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
 
         playBtn = createIconButton(R.drawable.ic_uikit_play, 80, 64);
-        ((LinearLayout.LayoutParams) playBtn.getLayoutParams()).leftMargin = dp(4);
-        ((LinearLayout.LayoutParams) playBtn.getLayoutParams()).rightMargin = dp(4);
         playBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -164,8 +161,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             }
         });
 
-        FrameLayout nextBtn = createIconButton(R.drawable.ic_uikit_next, 64, 64);
-        ((LinearLayout.LayoutParams) nextBtn.getLayoutParams()).leftMargin = dp(12);
+        UikitButton nextBtn = createIconButton(R.drawable.ic_uikit_next, 64, 64);
         nextBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -187,13 +183,17 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow1.setOrientation(LinearLayout.HORIZONTAL);
         menuRow1.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         
-        FrameLayout playlistBtn = createTextIconButton(R.drawable.ic_uikit_menu, "播放列表");
+        UikitButton playlistBtn = new UikitButton(this);
         playlistBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
+        playlistBtn.setText("播放列表");
+        playlistBtn.setIconResource(R.drawable.ic_uikit_menu);
         
-        FrameLayout sleepBtn = createTextIconButton(R.drawable.ic_uikit_time, "定时");
+        UikitButton sleepBtn = new UikitButton(this);
         LinearLayout.LayoutParams sLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
         sLp.leftMargin = dp(8);
         sleepBtn.setLayoutParams(sLp);
+        sleepBtn.setText("定时");
+        sleepBtn.setIconResource(R.drawable.ic_uikit_time);
 
         menuRow1.addView(playlistBtn);
         menuRow1.addView(sleepBtn);
@@ -220,13 +220,17 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow2.setOrientation(LinearLayout.HORIZONTAL);
         menuRow2.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        FrameLayout settingsBtn = createTextIconButton(R.drawable.ic_uikit_settings, "设置");
+        UikitButton settingsBtn = new UikitButton(this);
         settingsBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
+        settingsBtn.setText("设置");
+        settingsBtn.setIconResource(R.drawable.ic_uikit_settings);
 
-        modeBtn = createTextIconButton(R.drawable.ic_uikit_music, "顺序播放");
+        modeBtn = new UikitButton(this);
         LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
         modeLp.leftMargin = dp(8);
         modeBtn.setLayoutParams(modeLp);
+        modeBtn.setText("顺序播放");
+        modeBtn.setIconResource(R.drawable.ic_uikit_music);
 
         menuRow2.addView(settingsBtn);
         menuRow2.addView(modeBtn);
@@ -488,7 +492,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void updatePlayButton(boolean playing) {
         if (playBtn != null) {
-            ImageView icon = (ImageView) playBtn.getTag();
+            // 替换 playBtn 内部的第一个 View (也就是图标)
+            ImageView icon = (ImageView) playBtn.getChildAt(0);
             if (icon != null) icon.setImageResource(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play);
         }
     }
@@ -499,8 +504,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             String text = "顺序播放";
             if (m == PlaybackService.MODE_REPEAT_ONE) text = "单曲循环";
             else if (m == PlaybackService.MODE_SHUFFLE) text = "随机播放";
-            TextView tv = (TextView) modeBtn.getTag();
-            if (tv != null) tv.setText(text);
+            modeBtn.setText(text);
         }
     }
 
