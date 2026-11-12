@@ -1,9 +1,13 @@
 package com.example.oldmusic;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -16,6 +20,18 @@ public class SettingsActivity extends Activity {
 
     private SharedPreferences sp;
     private boolean isDark;
+    private PlaybackService service;
+    private boolean bound = false;
+
+    private final ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder binder) {
+            service = ((PlaybackService.LocalBinder) binder).getService();
+            bound = true;
+        }
+        @Override
+        public void onServiceDisconnected(ComponentName name) { bound = false; service = null; }
+    };
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -27,9 +43,11 @@ public class SettingsActivity extends Activity {
         super.onCreate(savedInstanceState);
         ThemeHelper.applyGlobalTheme(this);
         UikitTheme.applyTheme(this);
-
         sp = ThemeHelper.getPrefs(this);
         isDark = UikitTheme.isDarkMode(this);
+
+        Intent intent = new Intent(this, PlaybackService.class);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
 
         buildUI();
     }
@@ -69,9 +87,19 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemTheme);
 
-        // (主题颜色选项已被彻底删除)
+        // 2. 均衡器预设
+        UikitListItem itemEq = new UikitListItem(this, "均衡器", "切换音效预设");
+        itemEq.setArrow();
+        itemEq.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                UikitPickerActivity.show(SettingsActivity.this, "选择音效", 
+                    new String[]{"正常", "流行", "摇滚", "重低音", "人声"}, 1001);
+            }
+        });
+        addItemWithMargin(root, itemEq);
 
-        // 2. 强制圆屏适配
+        // 3. 强制圆屏适配
         boolean isForceRound = sp.getInt("screen_shape", UikitConfig.SHAPE_AUTO) == UikitConfig.SHAPE_ROUND;
         UikitListItem itemRound = new UikitListItem(this, "强制圆屏模式", "强制启用圆屏的边距与布局");
         itemRound.setSwitch(isForceRound, new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -83,7 +111,7 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemRound);
 
-        // 3. 侧滑返回
+        // 4. 侧滑返回
         boolean swipeBack = sp.getBoolean("swipe_back", true);
         UikitListItem itemSwipe = new UikitListItem(this, "侧滑返回", "通过手势快速退出当前页面");
         itemSwipe.setSwitch(swipeBack, new android.widget.CompoundButton.OnCheckedChangeListener() {
@@ -94,16 +122,22 @@ public class SettingsActivity extends Activity {
         });
         addItemWithMargin(root, itemSwipe);
 
-        // 4. 低性能模式
-        UikitListItem itemPerf = new UikitListItem(this, "低性能模式", "关闭 3D 滚轮与滑动动画");
-        itemPerf.setSwitch(UikitConfig.isLowPerf(this), new android.widget.CompoundButton.OnCheckedChangeListener() {
+        // 5. 关于 OldMusic
+        UikitListItem itemAbout = new UikitListItem(this, "关于 OldMusic", "版本信息与开源声明");
+        itemAbout.setArrow();
+        itemAbout.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onCheckedChanged(android.widget.CompoundButton buttonView, boolean isChecked) {
-                UikitConfig.setLowPerf(SettingsActivity.this, isChecked);
-                recreate();
+            public void onClick(View v) {
+                String longText = "OldMusic 是一款专为低版本 Android 与 Wear OS 打造的开源本地音乐播放器。" +
+                                  "\n\n核心特性：\n" +
+                                  "1. 适配 Android 2.3 至最新系统。\n" +
+                                  "2. 极简的 Wear OS 风格 UI。\n" +
+                                  "3. 支持 LRC 歌词、均衡器、睡眠定时。\n\n" +
+                                  "本项目基于 wear-uikit 构建。感谢所有开源贡献者！";
+                UikitFullTextActivity.show(SettingsActivity.this, "关于 OldMusic", longText, "我知道了", 1002);
             }
         });
-        addItemWithMargin(root, itemPerf);
+        addItemWithMargin(root, itemAbout);
     }
 
     private void addItemWithMargin(LinearLayout root, View view) {
@@ -116,9 +150,20 @@ public class SettingsActivity extends Activity {
         root.addView(view);
     }
 
-    private int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density);
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1001 && resultCode == RESULT_OK && data != null) {
+            int index = data.getIntExtra(UikitPickerActivity.EXTRA_RESULT_INDEX, -1);
+            if (index >= 0 && bound && service != null) {
+                // 映射为原生的预设编号 (通常 0 是正常，1 是流行...)
+                service.setEqualizerPreset((short) index);
+                UikitToast.show(this, "音效已切换");
+            }
+        }
     }
+
+    private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density); }
 
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
@@ -126,5 +171,11 @@ public class SettingsActivity extends Activity {
             if (UikitUi.handleSwipeBack(this, ev)) return true;
         }
         return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (bound) unbindService(connection);
+        super.onDestroy();
     }
 }
