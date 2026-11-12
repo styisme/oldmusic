@@ -128,12 +128,13 @@ public class SettingsActivity extends Activity {
         itemAbout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String longText = "OldMusic 是一款专为低版本 Android 与 Wear OS 打造的开源本地音乐播放器。" +
-                                  "\n\n核心特性：\n" +
-                                  "1. 适配 Android 2.3 至最新系统。\n" +
-                                  "2. 极简的 Wear OS 风格 UI。\n" +
-                                  "3. 支持 LRC 歌词、均衡器、睡眠定时。\n\n" +
-                                  "本项目基于 wear-uikit 构建。感谢所有开源贡献者！";
+                String longText = "OldMusic 是一款专为低版本安卓与 Wear OS 打造的开源本地音乐播放器。" +
+                                  "它完美适配安卓二代至最新系统。" +
+                                  "它拥有极简的 Wear OS 风格 UI。" +
+                                  "它不仅支持 LRC 歌词，还内置了均衡器与睡眠定时。" +
+                                  "本项目基于优秀的 wear-uikit 组件库构建。" +
+                                  "项目已在 GitHub 开源，搜索仓库 styisme oldmusic 即可找到。" +
+                                  "感谢所有开源贡献者！";
                 UikitFullTextActivity.show(SettingsActivity.this, "关于 OldMusic", longText, "我知道了", 1002);
             }
         });
