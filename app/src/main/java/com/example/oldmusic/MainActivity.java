@@ -9,6 +9,10 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.ImageSpan;
+
 
 import android.os.Handler;
 import android.os.IBinder;
@@ -358,32 +362,35 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private UikitButton createCustomBtn(int iconRes, String text) {
         UikitButton btn = new UikitButton(this);
-        btn.setText(""); // 清空自带文字
         btn.setPadding(0, 0, 0, 0);
+        btn.setGravity(Gravity.CENTER);
         
-        LinearLayout contentBox = new LinearLayout(this);
-        contentBox.setOrientation(LinearLayout.HORIZONTAL);
-        contentBox.setGravity(Gravity.CENTER);
-
-        if (iconRes != 0) {
-            android.widget.ImageView icon = new android.widget.ImageView(this);
-            icon.setImageResource(iconRes);
-            // 手动给图标染成和文字一样的颜色
-            icon.setColorFilter(UikitColor.getOnPrimaryColor(this));
-            LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(20), dp(20));
-            if (text != null && !text.isEmpty()) iconLp.rightMargin = dp(8);
-            contentBox.addView(icon, iconLp);
+        if (iconRes == 0) {
+            btn.setText(text);
+            return btn;
         }
 
-        if (text != null && !text.isEmpty()) {
-            android.widget.TextView tv = new android.widget.TextView(this);
-            tv.setText(text);
-            tv.setTextSize(14);
-            tv.setTextColor(UikitColor.getOnPrimaryColor(this));
-            contentBox.addView(tv);
-        }
+        int size = dp(20);
+        android.graphics.drawable.Drawable drawable = getResources().getDrawable(iconRes);
+        drawable.setBounds(0, 0, size, size);
         
-        btn.addView(contentBox);
+        // 自动获取按钮的文字颜色来给图标染色
+        int textColor = btn.getCurrentTextColor();
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            drawable.setTint(textColor);
+        } else {
+            drawable.setColorFilter(textColor, android.graphics.PorterDuff.Mode.SRC_IN);
+        }
+
+        // 核心：加一个空格作为间距，防止图标和文字粘连
+        String targetText = text != null && !text.isEmpty() ? text : "";
+        String finalText = targetText.isEmpty() ? " " : ("  " + targetText); 
+        
+        SpannableString spannableString = new SpannableString(finalText);
+        ImageSpan imageSpan = new ImageSpan(drawable, ImageSpan.ALIGN_BOTTOM);
+        spannableString.setSpan(imageSpan, 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        
+        btn.setText(spannableString);
         return btn;
     }
 
@@ -482,8 +489,20 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void updatePlayButton(boolean playing) {
         if (playBtn != null) {
-            playBtn.removeAllViews();
-            playBtn.addView(createCustomBtn(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play, "").getChildAt(0));
+            int resId = playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play;
+            int size = dp(28);
+            android.graphics.drawable.Drawable drawable = getResources().getDrawable(resId);
+            drawable.setBounds(0, 0, size, size);
+            int textColor = playBtn.getCurrentTextColor();
+            if (android.os.Build.VERSION.SDK_INT >= 21) {
+                drawable.setTint(textColor);
+            } else {
+                drawable.setColorFilter(textColor, android.graphics.PorterDuff.Mode.SRC_IN);
+            }
+            SpannableString spannableString = new SpannableString(" ");
+            ImageSpan imageSpan = new ImageSpan(drawable, ImageSpan.ALIGN_BOTTOM);
+            spannableString.setSpan(imageSpan, 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            playBtn.setText(spannableString);
         }
     }
 
@@ -493,8 +512,21 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             String text = "顺序播放";
             if (m == PlaybackService.MODE_REPEAT_ONE) text = "单曲循环";
             else if (m == PlaybackService.MODE_SHUFFLE) text = "随机播放";
-            modeBtn.removeAllViews();
-            modeBtn.addView(createCustomBtn(R.drawable.ic_uikit_music, text).getChildAt(0));
+            
+            int size = dp(18);
+            android.graphics.drawable.Drawable drawable = getResources().getDrawable(R.drawable.ic_uikit_music);
+            drawable.setBounds(0, 0, size, size);
+            int textColor = modeBtn.getCurrentTextColor();
+            if (android.os.Build.VERSION.SDK_INT >= 21) {
+                drawable.setTint(textColor);
+            } else {
+                drawable.setColorFilter(textColor, android.graphics.PorterDuff.Mode.SRC_IN);
+            }
+            String finalText = "  " + text;
+            SpannableString spannableString = new SpannableString(finalText);
+            ImageSpan imageSpan = new ImageSpan(drawable, ImageSpan.ALIGN_BOTTOM);
+            spannableString.setSpan(imageSpan, 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            modeBtn.setText(spannableString);
         }
     }
 
