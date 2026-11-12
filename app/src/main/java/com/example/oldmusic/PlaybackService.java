@@ -208,6 +208,35 @@ public class PlaybackService extends Service {
         playCurrent();
     }
 
+
+    // 播放外部传入的文件
+    public void playExternalUri(android.net.Uri uri, String title) {
+        try {
+            prepared = false;
+            player.reset();
+            player.setDataSource(getApplicationContext(), uri);
+            player.prepareAsync();
+            acquireWakeLock();
+            requestAudioFocus();
+            
+            // 临时覆盖当前歌曲信息
+            Song extSong = new Song();
+            extSong.id = -1;
+            extSong.title = title != null ? title : "外部音频";
+            extSong.artist = "未知歌手";
+            
+            // 清除当前列表状态，防止 next/prev 出现异常
+            playlist.clear();
+            playlist.add(extSong);
+            currentIndex = 0;
+
+            if (listener != null) listener.onSongChanged(extSong);
+            updateNotification();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void playCurrent() {
         Song song = getCurrentSong();
         if (song == null) return;

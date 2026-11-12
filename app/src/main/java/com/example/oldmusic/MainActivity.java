@@ -62,6 +62,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         buildModernUi();
         startAndBindService();
         handler.post(progressTask);
+        handleExternalIntent(getIntent());
     }
 
     private void buildModernUi() {
@@ -523,6 +524,39 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             lyrics = LrcParser.parse(lrcPath);
         }
         lyricView.setLines(lyrics);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleExternalIntent(intent);
+    }
+
+    private void handleExternalIntent(Intent intent) {
+        if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
+            final android.net.Uri uri = intent.getData();
+            if (uri != null) {
+                String title = "外部音频";
+                String path = uri.getLastPathSegment();
+                if (path != null) {
+                    int slash = path.lastIndexOf('/');
+                    if (slash >= 0) path = path.substring(slash + 1);
+                    title = path;
+                }
+                final String finalTitle = title;
+                // 等 Service 绑定完成后再播放
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (bound && service != null) {
+                            service.playExternalUri(uri, finalTitle);
+                            UikitToast.show(MainActivity.this, "正在播放外部音频");
+                        }
+                    }
+                }, 500); // 延迟 500ms 确保服务已连接
+            }
+        }
     }
 
     @Override
