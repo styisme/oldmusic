@@ -76,7 +76,7 @@ public class PlaybackService extends Service {
                 player.start();
                 acquireWakeLock();
                 notifyState(true);
-                initEqualizer();
+                // 注意：已彻底移除 initEqualizer，防止 .wav 等大文件导致底层卡死
             }
         });
         player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
@@ -115,14 +115,6 @@ public class PlaybackService extends Service {
         registerReceiver(noisyReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
     }
 
-    private void initEqualizer() {
-        try {
-            if (equalizer == null && player != null) {
-                equalizer = new Equalizer(0, player.getAudioSessionId());
-                equalizer.setEnabled(true);
-            }
-        } catch (Exception ignored) {}
-    }
 
     public void setEqualizerPreset(int preset) {
         if (equalizer != null) {
@@ -209,15 +201,16 @@ public class PlaybackService extends Service {
     }
 
 
-    // 播放外部传入的文件 (异步处理，防 ANR)
+    // 播放外部传入的文件 (终极安全版)
     public void playExternalUri(final android.net.Uri uri, final String title) {
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     prepared = false;
+                    try { player.stop(); } catch (Exception ignored) {} // 先停掉旧的
                     player.reset();
-                    // 核心修复：将 setDataSource 放到子线程，避免网络或跨进程阻塞主线程
+                    
                     player.setDataSource(getApplicationContext(), uri);
                     
                     final Song extSong = new Song();
@@ -241,7 +234,14 @@ public class PlaybackService extends Service {
                     player.prepareAsync();
                     acquireWakeLock();
                     requestAudioFocus();
-                    updateNotification();
+                    
+                    // 在主线程更新通知
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateNotification();
+                        }
+                    });
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
