@@ -9,9 +9,6 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.Spannable;
-import android.text.SpannableString;
-import android.text.style.ImageSpan;
 
 import android.os.Handler;
 import android.os.IBinder;
@@ -236,17 +233,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow1.setOrientation(LinearLayout.HORIZONTAL);
         menuRow1.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         
-        UikitButton playlistBtn = new UikitButton(this);
-        playlistBtn.setTextSize(14);
+        UikitButton playlistBtn = createCustomBtn(R.drawable.ic_uikit_menu, "播放列表");
         playlistBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
-        setIconToBtn(playlistBtn, R.drawable.ic_uikit_menu, 18, "播放列表");
         
-        UikitButton sleepBtn = new UikitButton(this);
-        sleepBtn.setTextSize(14);
+        UikitButton sleepBtn = createCustomBtn(R.drawable.ic_uikit_time, "定时");
         LinearLayout.LayoutParams sLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
         sLp.leftMargin = dp(8);
         sleepBtn.setLayoutParams(sLp);
-        setIconToBtn(sleepBtn, R.drawable.ic_uikit_time, 18, "定时");
 
         menuRow1.addView(playlistBtn);
         menuRow1.addView(sleepBtn);
@@ -274,17 +267,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow2.setOrientation(LinearLayout.HORIZONTAL);
         menuRow2.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        UikitButton settingsBtn = new UikitButton(this);
-        settingsBtn.setTextSize(14);
+        UikitButton settingsBtn = createCustomBtn(R.drawable.ic_uikit_settings, "设置");
         settingsBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
-        setIconToBtn(settingsBtn, R.drawable.ic_uikit_settings, 18, "设置");
 
-        modeBtn = new UikitButton(this);
-        modeBtn.setTextSize(14);
+        modeBtn = createCustomBtn(R.drawable.ic_uikit_music, "顺序播放");
         LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
         modeLp.leftMargin = dp(8);
         modeBtn.setLayoutParams(modeLp);
-        setIconToBtn(modeBtn, R.drawable.ic_uikit_music, 18, "顺序播放");
 
         menuRow2.addView(settingsBtn);
         menuRow2.addView(modeBtn);
@@ -367,21 +356,35 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     }
 
 
-    private void setIconToBtn(UikitButton btn, int resId, int sizeDp, String text) {
-        int size = dp(sizeDp);
-        android.graphics.drawable.Drawable drawable = getResources().getDrawable(resId);
-        drawable.setBounds(0, 0, size, size);
-
-        String targetText = " " + (text != null ? text : "");
-        SpannableString spannableString = new SpannableString(targetText);
-        ImageSpan imageSpan = new ImageSpan(drawable, ImageSpan.ALIGN_BOTTOM);
-        spannableString.setSpan(imageSpan, 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        
-        btn.setText(spannableString);
-        btn.setGravity(Gravity.CENTER);
+    private UikitButton createCustomBtn(int iconRes, String text) {
+        UikitButton btn = new UikitButton(this);
+        btn.setText(""); // 清空自带文字
         btn.setPadding(0, 0, 0, 0);
-        btn.setCompoundDrawables(null, null, null, null);
-        btn.setCompoundDrawablePadding(0);
+        
+        LinearLayout contentBox = new LinearLayout(this);
+        contentBox.setOrientation(LinearLayout.HORIZONTAL);
+        contentBox.setGravity(Gravity.CENTER);
+
+        if (iconRes != 0) {
+            android.widget.ImageView icon = new android.widget.ImageView(this);
+            icon.setImageResource(iconRes);
+            // 手动给图标染成和文字一样的颜色
+            icon.setColorFilter(UikitColor.getOnPrimaryColor(this));
+            LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(20), dp(20));
+            if (text != null && !text.isEmpty()) iconLp.rightMargin = dp(8);
+            contentBox.addView(icon, iconLp);
+        }
+
+        if (text != null && !text.isEmpty()) {
+            android.widget.TextView tv = new android.widget.TextView(this);
+            tv.setText(text);
+            tv.setTextSize(14);
+            tv.setTextColor(UikitColor.getOnPrimaryColor(this));
+            contentBox.addView(tv);
+        }
+        
+        btn.addView(contentBox);
+        return btn;
     }
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density); }
@@ -479,7 +482,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void updatePlayButton(boolean playing) {
         if (playBtn != null) {
-            setIconToBtn(playBtn, playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play, 32, "");
+            playBtn.removeAllViews();
+            playBtn.addView(createCustomBtn(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play, "").getChildAt(0));
         }
     }
 
@@ -489,7 +493,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             String text = "顺序播放";
             if (m == PlaybackService.MODE_REPEAT_ONE) text = "单曲循环";
             else if (m == PlaybackService.MODE_SHUFFLE) text = "随机播放";
-            setIconToBtn(modeBtn, R.drawable.ic_uikit_music, 18, text);
+            modeBtn.removeAllViews();
+            modeBtn.addView(createCustomBtn(R.drawable.ic_uikit_music, text).getChildAt(0));
         }
     }
 
