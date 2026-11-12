@@ -209,32 +209,44 @@ public class PlaybackService extends Service {
     }
 
 
-    // 播放外部传入的文件
-    public void playExternalUri(android.net.Uri uri, String title) {
-        try {
-            prepared = false;
-            player.reset();
-            player.setDataSource(getApplicationContext(), uri);
-            player.prepareAsync();
-            acquireWakeLock();
-            requestAudioFocus();
-            
-            // 临时覆盖当前歌曲信息
-            Song extSong = new Song();
-            extSong.id = -1;
-            extSong.title = title != null ? title : "外部音频";
-            extSong.artist = "未知歌手";
-            
-            // 清除当前列表状态，防止 next/prev 出现异常
-            playlist.clear();
-            playlist.add(extSong);
-            currentIndex = 0;
+    // 播放外部传入的文件 (异步处理，防 ANR)
+    public void playExternalUri(final android.net.Uri uri, final String title) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    prepared = false;
+                    player.reset();
+                    // 核心修复：将 setDataSource 放到子线程，避免网络或跨进程阻塞主线程
+                    player.setDataSource(getApplicationContext(), uri);
+                    
+                    final Song extSong = new Song();
+                    extSong.id = -1;
+                    extSong.title = title != null ? title : "外部音频";
+                    extSong.artist = "外部文件";
+                    
+                    playlist.clear();
+                    playlist.add(extSong);
+                    currentIndex = 0;
 
-            if (listener != null) listener.onSongChanged(extSong);
-            updateNotification();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+                    if (listener != null) {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                listener.onSongChanged(extSong);
+                            }
+                        });
+                    }
+                    
+                    player.prepareAsync();
+                    acquireWakeLock();
+                    requestAudioFocus();
+                    updateNotification();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
     private void playCurrent() {

@@ -537,26 +537,56 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
             final android.net.Uri uri = intent.getData();
             if (uri != null) {
-                String title = "外部音频";
-                String path = uri.getLastPathSegment();
-                if (path != null) {
-                    int slash = path.lastIndexOf('/');
-                    if (slash >= 0) path = path.substring(slash + 1);
-                    title = path;
-                }
+                // 精准解析真实文件名
+                String title = getFileNameFromUri(uri);
+                if (title == null) title = "外部音频";
                 final String finalTitle = title;
-                // 等 Service 绑定完成后再播放
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (bound && service != null) {
-                            service.playExternalUri(uri, finalTitle);
-                            UikitToast.show(MainActivity.this, "正在播放外部音频");
+                
+                if (bound && service != null) {
+                    service.playExternalUri(uri, finalTitle);
+                    UikitToast.show(MainActivity.this, "正在播放外部音频");
+                } else {
+                    // 如果 Service 还没连上，用一个简单的轮询替代死板的延迟
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (bound && service != null) {
+                                service.playExternalUri(uri, finalTitle);
+                                UikitToast.show(MainActivity.this, "正在播放外部音频");
+                            } else {
+                                handler.postDelayed(this, 200); // 每 200ms 检查一次
+                            }
                         }
-                    }
-                }, 500); // 延迟 500ms 确保服务已连接
+                    }, 200);
+                }
             }
         }
+    }
+
+    private String getFileNameFromUri(android.net.Uri uri) {
+        String result = null;
+        if ("content".equals(uri.getScheme())) {
+            android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    int nameIndex = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DISPLAY_NAME);
+                    if (nameIndex >= 0) {
+                        result = cursor.getString(nameIndex);
+                    }
+                }
+                cursor.close();
+            }
+        }
+        if (result == null) {
+            result = uri.getPath();
+            if (result != null) {
+                int cut = result.lastIndexOf('/');
+                if (cut != -1) {
+                    result = result.substring(cut + 1);
+                }
+            }
+        }
+        return result;
     }
 
     @Override
