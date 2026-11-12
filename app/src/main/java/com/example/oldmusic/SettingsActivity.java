@@ -135,7 +135,7 @@ public class SettingsActivity extends Activity {
                                   "本项目基于优秀的 wear-uikit 组件库构建。" +
                                   "项目已在 GitHub 开源，搜索仓库 styisme oldmusic 即可找到。" +
                                   "感谢所有开源贡献者！";
-                UikitFullTextActivity.show(SettingsActivity.this, "关于 OldMusic", longText, "我知道了", 1002);
+                UikitFullTextActivity.show(SettingsActivity.this, "关于 OldMusic", longText, "我知道了", false, 1002);
             }
         });
         addItemWithMargin(root, itemAbout);

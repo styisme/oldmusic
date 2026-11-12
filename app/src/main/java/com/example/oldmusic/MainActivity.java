@@ -144,7 +144,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         btnRow.setGravity(Gravity.CENTER);
 
         UikitButton prevBtn = new UikitButton(this);
-        prevBtn.setText("上一首");
+        prevBtn.setText("");
+        prevBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_prev, 0, 0, 0);
         prevBtn.setTextSize(14);
         LinearLayout.LayoutParams prevLp = new LinearLayout.LayoutParams(0, dp(56), 1f);
         prevLp.rightMargin = dp(8);
@@ -173,7 +174,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
 
         playBtn = new UikitButton(this);
-        playBtn.setText("播放");
+        playBtn.setText("");
+        playBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_play, 0, 0, 0);
         playBtn.setTextSize(18);
         LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(0, dp(56), 1.2f);
         playLp.leftMargin = dp(8);
@@ -189,7 +191,8 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
 
         UikitButton nextBtn = new UikitButton(this);
-        nextBtn.setText("下一首");
+        nextBtn.setText("");
+        nextBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_next, 0, 0, 0);
         nextBtn.setTextSize(14);
         LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(0, dp(56), 1f);
         nextLp.leftMargin = dp(8);
@@ -230,12 +233,14 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow1.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         
         UikitButton playlistBtn = new UikitButton(this);
-        playlistBtn.setText("列表");
+        playlistBtn.setText("");
+        playlistBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_menu, 0, 0, 0);
         playlistBtn.setTextSize(15);
         playlistBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
         
         UikitButton sleepBtn = new UikitButton(this);
-        sleepBtn.setText("定时");
+        sleepBtn.setText("");
+        sleepBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_time, 0, 0, 0);
         sleepBtn.setTextSize(15);
         LinearLayout.LayoutParams sLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
         sLp.leftMargin = dp(8);
@@ -268,11 +273,13 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow2.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         UikitButton settingsBtn = new UikitButton(this);
-        settingsBtn.setText("设置");
+        settingsBtn.setText("");
+        settingsBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_settings, 0, 0, 0);
         settingsBtn.setTextSize(15);
         settingsBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         modeBtn = new UikitButton(this);
+        modeBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_music, 0, 0, 0);
         modeBtn.setText("顺序播放");
         modeBtn.setTextSize(14);
         LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
@@ -453,7 +460,10 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
     }
 
     private void updatePlayButton(boolean playing) {
-        if (playBtn != null) playBtn.setText(playing ? "暂停" : "播放");
+        if (playBtn != null) {
+            playBtn.setText("");
+            playBtn.setCompoundDrawablesWithIntrinsicBounds(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play, 0, 0, 0);
+        }
     }
 
     private void updateModeButton() {
