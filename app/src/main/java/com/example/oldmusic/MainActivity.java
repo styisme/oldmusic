@@ -18,6 +18,9 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
