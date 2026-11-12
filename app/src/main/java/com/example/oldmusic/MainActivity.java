@@ -233,15 +233,23 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow1.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         
         UikitButton playlistBtn = new UikitButton(this);
-        playlistBtn.setText("");
-        playlistBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_menu, 0, 0, 0);
-        playlistBtn.setTextSize(15);
+        playlistBtn.setText("播放列表");
+        playlistBtn.setTextSize(14);
+        playlistBtn.setGravity(Gravity.CENTER);
+        android.graphics.drawable.Drawable menuIcon = getResources().getDrawable(R.drawable.ic_uikit_menu);
+        menuIcon.setBounds(0, 0, dp(18), dp(18));
+        playlistBtn.setCompoundDrawables(menuIcon, null, null, null);
+        playlistBtn.setCompoundDrawablePadding(dp(8));
         playlistBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
         
         UikitButton sleepBtn = new UikitButton(this);
-        sleepBtn.setText("");
-        sleepBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_time, 0, 0, 0);
-        sleepBtn.setTextSize(15);
+        sleepBtn.setText("定时");
+        sleepBtn.setTextSize(14);
+        sleepBtn.setGravity(Gravity.CENTER);
+        android.graphics.drawable.Drawable timeIcon = getResources().getDrawable(R.drawable.ic_uikit_time);
+        timeIcon.setBounds(0, 0, dp(18), dp(18));
+        sleepBtn.setCompoundDrawables(timeIcon, null, null, null);
+        sleepBtn.setCompoundDrawablePadding(dp(8));
         LinearLayout.LayoutParams sLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
         sLp.leftMargin = dp(8);
         sleepBtn.setLayoutParams(sLp);
@@ -273,13 +281,16 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         menuRow2.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         UikitButton settingsBtn = new UikitButton(this);
-        settingsBtn.setText("");
-        settingsBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_settings, 0, 0, 0);
-        settingsBtn.setTextSize(15);
+        settingsBtn.setText("设置");
+        settingsBtn.setTextSize(14);
+        settingsBtn.setGravity(Gravity.CENTER);
+        android.graphics.drawable.Drawable setIcon = getResources().getDrawable(R.drawable.ic_uikit_settings);
+        setIcon.setBounds(0, 0, dp(18), dp(18));
+        settingsBtn.setCompoundDrawables(setIcon, null, null, null);
+        settingsBtn.setCompoundDrawablePadding(dp(8));
         settingsBtn.setLayoutParams(new LinearLayout.LayoutParams(0, dp(48), 1f));
 
         modeBtn = new UikitButton(this);
-        modeBtn.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_uikit_music, 0, 0, 0);
         modeBtn.setText("顺序播放");
         modeBtn.setTextSize(14);
         LinearLayout.LayoutParams modeLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
@@ -364,6 +375,18 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 UikitToast.show(this, minutes > 0 ? ("已设置 " + minutes + " 分钟后暂停") : "已取消定时");
             }
         }
+    }
+
+
+    private void setBtnIcon(UikitButton btn, int resId, int sizeDp) {
+        btn.setText("");
+        btn.setGravity(Gravity.CENTER);
+        btn.setPadding(0, 0, 0, 0);
+        btn.setCompoundDrawablePadding(0);
+        android.graphics.drawable.Drawable d = getResources().getDrawable(resId);
+        int size = dp(sizeDp);
+        d.setBounds(0, 0, size, size);
+        btn.setCompoundDrawables(d, null, null, null);
     }
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density); }
@@ -461,8 +484,7 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void updatePlayButton(boolean playing) {
         if (playBtn != null) {
-            playBtn.setText("");
-            playBtn.setCompoundDrawablesWithIntrinsicBounds(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play, 0, 0, 0);
+            setBtnIcon(playBtn, playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play, 32);
         }
     }
 
