@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -102,13 +101,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         artistView.setTextColor(isDark ? 0xFFAAAAAA : 0xFF666666);
         artistView.setGravity(Gravity.CENTER);
         artistView.setPadding(0, dp(8), 0, dp(24));
-        
-        titleView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                UikitImageViewerActivity.show(MainActivity.this, "demo_image.png");
-            }
-        });
 
         root.addView(titleView);
         root.addView(artistView);
@@ -143,6 +135,9 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         btnRow.setGravity(Gravity.CENTER);
 
         UikitButton prevBtn = createIconButton(R.drawable.ic_uikit_prev, 64, 64);
+        LinearLayout.LayoutParams prevLp = new LinearLayout.LayoutParams(dp(64), dp(64));
+        prevLp.rightMargin = dp(12);
+        prevBtn.setLayoutParams(prevLp);
         prevBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -152,6 +147,10 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
 
         playBtn = createIconButton(R.drawable.ic_uikit_play, 80, 64);
+        LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(dp(80), dp(64));
+        playLp.leftMargin = dp(4);
+        playLp.rightMargin = dp(4);
+        playBtn.setLayoutParams(playLp);
         playBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -162,6 +161,9 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
 
         UikitButton nextBtn = createIconButton(R.drawable.ic_uikit_next, 64, 64);
+        LinearLayout.LayoutParams nextLp = new LinearLayout.LayoutParams(dp(64), dp(64));
+        nextLp.leftMargin = dp(12);
+        nextBtn.setLayoutParams(nextLp);
         nextBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -251,109 +253,26 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
         });
     }
 
-    // 底层拦截动画，顶层只显示
-    private FrameLayout createIconButton(int resId, int widthDp, int heightDp) {
-        final FrameLayout wrapper = new FrameLayout(this);
-        wrapper.setLayoutParams(new LinearLayout.LayoutParams(dp(widthDp), dp(heightDp)));
+    // 利用 v1.6.0 的 UikitButton 原生支持 addView
+    private UikitButton createIconButton(int resId, int widthDp, int heightDp) {
+        UikitButton btn = new UikitButton(this);
+        btn.setLayoutParams(new LinearLayout.LayoutParams(dp(widthDp), dp(heightDp)));
         
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(32));
-        bg.setColor(UikitColor.getPrimaryColor(this));
-        wrapper.setBackground(bg);
-
+        // 清除 UikitButton 自带的无用 View，塞入大图标
+        btn.removeAllViews(); 
         ImageView icon = new ImageView(this);
         icon.setImageResource(resId);
-        icon.setClickable(false);
-        icon.setFocusable(false);
         int textColor = UikitColor.getOnPrimaryColor(this);
         if (Build.VERSION.SDK_INT >= 21) {
             icon.setImageTintList(android.content.res.ColorStateList.valueOf(textColor));
         } else {
             icon.setColorFilter(textColor);
         }
-        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(28), dp(28));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(28), dp(28));
         iconLp.gravity = Gravity.CENTER;
-        wrapper.addView(icon, iconLp);
-        wrapper.setTag(icon);
-
-        wrapper.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, android.view.MotionEvent event) {
-                if (Build.VERSION.SDK_INT < 11) return false;
-                switch (event.getAction()) {
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        v.animate().scaleX(0.9f).scaleY(0.9f).alpha(0.7f).setDuration(100).start();
-                        break;
-                    case android.view.MotionEvent.ACTION_UP:
-                    case android.view.MotionEvent.ACTION_CANCEL:
-                        v.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(150).start();
-                        break;
-                }
-                return false;
-            }
-        });
-        return wrapper;
-    }
-
-    private FrameLayout createTextIconButton(int resId, String text) {
-        final FrameLayout wrapper = new FrameLayout(this);
+        btn.addView(icon, iconLp);
         
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(32));
-        bg.setColor(UikitColor.getPrimaryColor(this));
-        wrapper.setBackground(bg);
-
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.HORIZONTAL);
-        content.setGravity(Gravity.CENTER);
-        content.setClickable(false);
-        content.setFocusable(false);
-
-        int textColor = UikitColor.getOnPrimaryColor(this);
-
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(resId);
-        icon.setClickable(false);
-        icon.setFocusable(false);
-        if (Build.VERSION.SDK_INT >= 21) {
-            icon.setImageTintList(android.content.res.ColorStateList.valueOf(textColor));
-        } else {
-            icon.setColorFilter(textColor);
-        }
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(18), dp(18));
-        iconLp.rightMargin = dp(6);
-        content.addView(icon, iconLp);
-
-        TextView tv = new TextView(this);
-        tv.setText(text);
-        tv.setTextSize(14);
-        tv.setTextColor(textColor);
-        tv.setClickable(false);
-        tv.setFocusable(false);
-        content.addView(tv);
-
-        FrameLayout.LayoutParams contentLp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-        contentLp.gravity = Gravity.CENTER;
-        wrapper.addView(content, contentLp);
-        wrapper.setTag(tv);
-
-        wrapper.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, android.view.MotionEvent event) {
-                if (Build.VERSION.SDK_INT < 11) return false;
-                switch (event.getAction()) {
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        v.animate().scaleX(0.95f).scaleY(0.95f).alpha(0.8f).setDuration(100).start();
-                        break;
-                    case android.view.MotionEvent.ACTION_UP:
-                    case android.view.MotionEvent.ACTION_CANCEL:
-                        v.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(150).start();
-                        break;
-                }
-                return false;
-            }
-        });
-        return wrapper;
+        return btn;
     }
 
     private void showPlaylistDialog() {
@@ -393,6 +312,40 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
                 else if (index == 3) minutes = 60;
                 service.setSleepTimer(minutes);
                 UikitToast.show(this, minutes > 0 ? ("已设置 " + minutes + " 分钟后暂停") : "已取消定时");
+            }
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleExternalIntent(intent);
+    }
+
+    private void handleExternalIntent(Intent intent) {
+        if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
+            final android.net.Uri uri = intent.getData();
+            if (uri != null) {
+                String title = "外部音频";
+                String path = uri.getLastPathSegment();
+                if (path != null) {
+                    int slash = path.lastIndexOf('/');
+                    if (slash >= 0) path = path.substring(slash + 1);
+                    title = path;
+                }
+                final String finalTitle = title;
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (bound && service != null) {
+                            service.playExternalUri(uri, finalTitle);
+                            UikitToast.show(MainActivity.this, "正在播放外部音频");
+                        } else {
+                            handler.postDelayed(this, 200);
+                        }
+                    }
+                }, 200);
             }
         }
     }
@@ -492,7 +445,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
 
     private void updatePlayButton(boolean playing) {
         if (playBtn != null) {
-            // 替换 playBtn 内部的第一个 View (也就是图标)
             ImageView icon = (ImageView) playBtn.getChildAt(0);
             if (icon != null) icon.setImageResource(playing ? R.drawable.ic_uikit_pause : R.drawable.ic_uikit_play);
         }
@@ -528,42 +480,6 @@ public class MainActivity extends Activity implements PlaybackService.Listener {
             lyrics = LrcParser.parse(lrcPath);
         }
         lyricView.setLines(lyrics);
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        handleExternalIntent(intent);
-    }
-
-    private void handleExternalIntent(Intent intent) {
-        if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
-            final android.net.Uri uri = intent.getData();
-            if (uri != null) {
-                // 直接截取路径最后一段，绝对不查数据库，防止主线程卡死
-                String title = "外部音频";
-                String path = uri.getLastPathSegment();
-                if (path != null) {
-                    int slash = path.lastIndexOf('/');
-                    if (slash >= 0) path = path.substring(slash + 1);
-                    title = path;
-                }
-                final String finalTitle = title;
-                
-                handler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (bound && service != null) {
-                            service.playExternalUri(uri, finalTitle);
-                            UikitToast.show(MainActivity.this, "正在播放外部音频");
-                        } else {
-                            handler.postDelayed(this, 200);
-                        }
-                    }
-                }, 200);
-            }
-        }
     }
 
     @Override
